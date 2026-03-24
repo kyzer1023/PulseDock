@@ -4,6 +4,8 @@ import {
   formatRelativeTime,
   formatTokens,
 } from "@renderer/lib/formatters";
+import chatgptIcon from "@renderer/assets/chatgpt.png";
+import cursorIcon from "@renderer/assets/cursor.png";
 import { UsageBar } from "./UsageBar";
 
 interface ProviderDetailPanelProps {
@@ -58,14 +60,13 @@ export function ProviderDetailPanel({
   const hasData =
     provider.status === "fresh" || provider.status === "warning" || provider.status === "stale";
   const usageBreakdown = getUsageBreakdown(provider);
+  const icon = provider.id === "codex" ? chatgptIcon : cursorIcon;
 
   return (
-    <section className={`provider-detail provider-detail--${provider.id}`}>
+    <section className="provider-detail">
       <div className="provider-detail__hero">
         <div className="provider-detail__title-row">
-          <div className={`provider-detail__logo provider-detail__logo--${accent}`}>
-            {provider.id === "codex" ? "C" : "R"}
-          </div>
+          <img alt="" className="provider-detail__logo" src={icon} />
           <div>
             <h2 className="provider-detail__title">{provider.displayName}</h2>
             <div className="provider-detail__meta">
@@ -100,7 +101,7 @@ export function ProviderDetailPanel({
           </div>
 
           <div className="provider-detail__section">
-            <div className="provider-detail__section-label">Details</div>
+            <div className="provider-detail__section-label">Cost</div>
             <div className="detail-card">
               <div className="detail-row">
                 <span>Estimated cost</span>

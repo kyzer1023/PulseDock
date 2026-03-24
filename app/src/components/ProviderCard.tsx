@@ -17,6 +17,7 @@ export function ProviderCard({ provider }: ProviderCardProps) {
         <div>
           <p className="provider-badge">{provider.id.toUpperCase()}</p>
           <h3 className="provider-title">{provider.displayName}</h3>
+          <p className="provider-card__subline">{provider.usageWindow.label}</p>
         </div>
         <StatusPill status={provider.status} />
       </div>

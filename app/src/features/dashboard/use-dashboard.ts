@@ -41,8 +41,13 @@ export function useDashboard() {
   }, []);
 
   async function refresh(): Promise<void> {
-    const nextSnapshot = await window.pulsedock.refreshDashboard();
-    setSnapshot(nextSnapshot);
+    try {
+      const nextSnapshot = await window.pulsedock.refreshDashboard();
+      setSnapshot(nextSnapshot);
+      setBridgeError(null);
+    } catch (error: unknown) {
+      setBridgeError(error instanceof Error ? error.message : String(error));
+    }
   }
 
   async function openExternal(url: string): Promise<void> {

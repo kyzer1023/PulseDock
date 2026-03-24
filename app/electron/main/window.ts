@@ -1,5 +1,6 @@
+import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { BrowserWindow, screen, Tray } from "electron";
+import { app, BrowserWindow, screen, Tray } from "electron";
 
 const POPUP_WIDTH = 388;
 const POPUP_HEIGHT = 520;
@@ -12,6 +13,14 @@ function getRendererUrl(): string {
   }
 
   return new URL("../../../dist/renderer/index.html", import.meta.url).toString();
+}
+
+function getWindowIconPath(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "assets", "icon.png");
+  }
+
+  return path.join(app.getAppPath(), "app", "src", "assets", "icon.png");
 }
 
 export function createPopupWindow(): BrowserWindow {
@@ -29,8 +38,8 @@ export function createPopupWindow(): BrowserWindow {
     fullscreenable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
-    backgroundColor: "#111417",
-    vibrancy: "under-window",
+    backgroundColor: "#1a1d21",
+    icon: getWindowIconPath(),
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,
@@ -66,27 +75,14 @@ export function togglePopupWindow(window: BrowserWindow, tray: Tray): void {
   window.focus();
 }
 
-function positionPopupWindow(window: BrowserWindow, tray: Tray): void {
-  const trayBounds = tray.getBounds();
-  const display = screen.getDisplayNearestPoint({
-    x: trayBounds.x + Math.round(trayBounds.width / 2),
-    y: trayBounds.y + Math.round(trayBounds.height / 2),
-  });
+function positionPopupWindow(window: BrowserWindow, _tray: Tray): void {
+  const cursorPos = screen.getCursorScreenPoint();
+  const display = screen.getDisplayNearestPoint(cursorPos);
   const workArea = display.workArea;
   const { width: windowWidth, height: windowHeight } = window.getBounds();
 
-  const targetX = trayBounds.x + Math.round(trayBounds.width / 2) - Math.round(windowWidth / 2);
-  const clampedX = Math.min(
-    Math.max(targetX, workArea.x + WINDOW_MARGIN),
-    workArea.x + workArea.width - windowWidth - WINDOW_MARGIN,
-  );
+  const x = workArea.x + workArea.width - windowWidth - WINDOW_MARGIN;
+  const y = workArea.y + workArea.height - windowHeight - WINDOW_MARGIN;
 
-  const belowY = trayBounds.y + trayBounds.height + WINDOW_MARGIN;
-  const aboveY = trayBounds.y - windowHeight - WINDOW_MARGIN;
-  const targetY =
-    belowY + windowHeight <= workArea.y + workArea.height
-      ? belowY
-      : Math.max(workArea.y + WINDOW_MARGIN, aboveY);
-
-  window.setPosition(clampedX, targetY, false);
+  window.setPosition(x, y, false);
 }

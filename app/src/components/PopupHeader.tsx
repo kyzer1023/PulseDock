@@ -34,8 +34,8 @@ export function PopupHeader({ isRefreshing, onRefresh }: PopupHeaderProps) {
   return (
     <header className="popup-header">
       <div>
-        <p className="eyebrow">PulseDock</p>
-        <h1 className="app-title">Local AI usage monitor</h1>
+        <h1 className="popup-header__title">PulseDock</h1>
+        <p className="popup-header__sub">Local AI usage monitor</p>
       </div>
       <button
         aria-label="Refresh usage data"
