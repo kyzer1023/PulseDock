@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import type { DashboardSnapshot, ProviderContext, ProviderSnapshot, UsageProvider } from "../../domain/dashboard.js";
+import type { DashboardSnapshot, PlanMeter, ProviderContext, ProviderSnapshot, UsageProvider } from "../../domain/dashboard.js";
 import { createRecentDateWindow } from "../shared/date-window.js";
 import { mapCodexWarnings } from "../shared/warning-text.js";
 
@@ -235,6 +235,13 @@ function createUsageWindow(now: Date) {
   };
 }
 
+function createMockPlanMeters(): PlanMeter[] {
+  return [
+    { id: "session", label: "Session (5h)", current: 38, limit: 100, unit: "percent", resetLabel: "Resets 2h 47m" },
+    { id: "weekly", label: "Weekly", current: 54, limit: 100, unit: "percent", resetLabel: "Resets 4d 9h" },
+  ];
+}
+
 function createEmptySnapshot(
   context: ProviderContext,
   detailMessage: string,
@@ -261,6 +268,7 @@ function createEmptySnapshot(
     staleSince: null,
     provenance: ["Codex local sessions"],
     detailMessage,
+    planMeters: createMockPlanMeters(),
   };
 }
 
@@ -686,6 +694,7 @@ function buildSnapshot(
     staleSince: null,
     provenance: ["Codex local sessions"],
     detailMessage: null,
+    planMeters: createMockPlanMeters(),
   };
 }
 

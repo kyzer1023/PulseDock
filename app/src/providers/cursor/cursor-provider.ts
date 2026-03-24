@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import type { ProviderContext, ProviderSnapshot, UsageProvider } from "../../domain/dashboard.js";
+import type { PlanMeter, ProviderContext, ProviderSnapshot, UsageProvider } from "../../domain/dashboard.js";
 import { createRecentDateWindow } from "../shared/date-window.js";
 
 interface CursorAuthState {
@@ -532,6 +532,14 @@ function summarizeRows(rows: UsageRow[]): {
   return { totals, activityCount, topProvider, topModel };
 }
 
+function createMockPlanMeters(): PlanMeter[] {
+  return [
+    { id: "session", label: "Session (5h)", current: 38, limit: 100, unit: "percent", resetLabel: "Resets 2h 47m" },
+    { id: "weekly", label: "Weekly", current: 54, limit: 100, unit: "percent", resetLabel: "Resets 4d 9h" },
+    { id: "requests", label: "Included-Request Usage", current: 27, limit: 500, unit: "requests", resetLabel: "Resets 18 Apr 2026" },
+  ];
+}
+
 function createEmptySnapshot(
   context: ProviderContext,
   detailMessage: string,
@@ -558,6 +566,7 @@ function createEmptySnapshot(
     staleSince: null,
     provenance: ["Cursor desktop auth", "Cursor usage export"],
     detailMessage,
+    planMeters: createMockPlanMeters(),
   };
 }
 
@@ -669,6 +678,7 @@ function createSnapshot(context: ProviderContext, rows: UsageRow[]): ProviderSna
     staleSince: null,
     provenance: ["Cursor desktop auth", "Cursor usage export"],
     detailMessage: null,
+    planMeters: createMockPlanMeters(),
   };
 }
 

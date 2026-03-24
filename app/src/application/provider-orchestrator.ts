@@ -137,6 +137,7 @@ function buildProviderErrorSnapshot(
     staleSince: null,
     provenance: previousSnapshot?.provenance ?? [],
     detailMessage,
+    planMeters: [],
   };
 }
 

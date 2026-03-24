@@ -6,13 +6,12 @@ import {
 } from "@renderer/lib/formatters";
 import chatgptIcon from "@renderer/assets/chatgpt.png";
 import cursorIcon from "@renderer/assets/cursor.png";
+import { PlanMeterBar } from "./PlanMeterBar";
 import { UsageBar } from "./UsageBar";
 
 interface ProviderDetailPanelProps {
   provider: ProviderSnapshot;
   onDashboard: () => void | Promise<void>;
-  onQuit: () => void | Promise<void>;
-  onRefresh: () => void | Promise<void>;
 }
 
 function getAccent(provider: ProviderSnapshot): "codex" | "cursor" {
@@ -50,29 +49,37 @@ function getUsageBreakdown(provider: ProviderSnapshot) {
   ];
 }
 
+function ExternalLinkIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3" />
+    </svg>
+  );
+}
+
 export function ProviderDetailPanel({
   provider,
   onDashboard,
-  onQuit,
-  onRefresh,
 }: ProviderDetailPanelProps) {
   const accent = getAccent(provider);
   const hasData =
     provider.status === "fresh" || provider.status === "warning" || provider.status === "stale";
   const usageBreakdown = getUsageBreakdown(provider);
   const icon = provider.id === "codex" ? chatgptIcon : cursorIcon;
+  const hasMeters = provider.planMeters.length > 0;
 
   return (
     <section className="provider-detail">
       <div className="provider-detail__hero">
         <div className="provider-detail__title-row">
           <img alt="" className="provider-detail__logo" src={icon} />
-          <div>
+          <div className="provider-detail__title-copy">
             <h2 className="provider-detail__title">{provider.displayName}</h2>
             <div className="provider-detail__meta">
-              <span className={`provider-detail__dot provider-detail__dot--${accent}`} />
-              <span>Updated {formatRelativeTime(provider.lastRefreshedAt)}</span>
-              <span>{provider.provenance[0] ?? "provider"}</span>
+              <span className="provider-detail__meta-item">
+                <span className={`provider-detail__dot provider-detail__dot--${accent}`} />
+                <span>Updated {formatRelativeTime(provider.lastRefreshedAt)}</span>
+              </span>
             </div>
           </div>
         </div>
@@ -81,6 +88,17 @@ export function ProviderDetailPanel({
           {provider.topLabel ?? provider.status.toUpperCase()}
         </div>
       </div>
+
+      {hasMeters ? (
+        <div className="provider-detail__section">
+          <div className="provider-detail__section-label">Plan</div>
+          <div className="plan-meters">
+            {provider.planMeters.map((meter) => (
+              <PlanMeterBar accent={accent} key={meter.id} meter={meter} />
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {hasData ? (
         <>
@@ -135,20 +153,9 @@ export function ProviderDetailPanel({
 
       <div className="provider-detail__footer">
         <button className="footer-link" onClick={() => void onDashboard()} type="button">
-          Dashboard
+          <span>Dashboard</span>
+          <ExternalLinkIcon />
         </button>
-        <div className="provider-detail__footer-actions">
-          <button
-            className={`footer-button footer-button--${accent}`}
-            onClick={() => void onRefresh()}
-            type="button"
-          >
-            Refresh
-          </button>
-          <button className="footer-ghost" onClick={() => void onQuit()} type="button">
-            Quit
-          </button>
-        </div>
       </div>
     </section>
   );

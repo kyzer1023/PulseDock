@@ -38,7 +38,7 @@ export function createPopupWindow(): BrowserWindow {
     fullscreenable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
-    backgroundColor: "#1a1d21",
+    backgroundColor: "#13161a",
     icon: getWindowIconPath(),
     webPreferences: {
       preload: preloadPath,

@@ -8,15 +8,17 @@ import { ProviderDetailPanel } from "@renderer/components/ProviderDetailPanel";
 import { ProviderTabs } from "@renderer/components/ProviderTabs";
 import { StatusStrip } from "@renderer/components/StatusStrip";
 import { SummaryBar } from "@renderer/components/SummaryBar";
+import { useTheme } from "@renderer/hooks/use-theme";
 import { useDashboard } from "./use-dashboard";
 
 const DASHBOARD_URLS: Record<ProviderId, string> = {
-  codex: "https://chatgpt.com/codex",
-  cursor: "https://cursor.com/settings",
+  codex: "https://chatgpt.com/codex/settings/usage",
+  cursor: "https://cursor.com/dashboard/usage",
 };
 
 export function DashboardApp() {
   const { bridgeError, openExternal, quitApp, refresh, snapshot } = useDashboard();
+  const { theme, toggle: toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<ProviderId>("codex");
 
   const isLoading = snapshot === null || snapshot.loadingState === "loading";
@@ -30,7 +32,13 @@ export function DashboardApp() {
 
   return (
     <main className="tray-shell">
-      <PopupHeader isRefreshing={snapshot?.loadingState === "refreshing"} onRefresh={refresh} />
+      <PopupHeader
+        isRefreshing={snapshot?.loadingState === "refreshing"}
+        theme={theme}
+        onRefresh={refresh}
+        onToggleTheme={toggleTheme}
+        onQuit={quitApp}
+      />
 
       <SummaryBar summary={snapshot?.summary ?? null} isLoading={isLoading} />
 
@@ -52,8 +60,6 @@ export function DashboardApp() {
             <ProviderDetailPanel
               provider={activeProvider}
               onDashboard={() => openExternal(DASHBOARD_URLS[activeProvider.id])}
-              onQuit={quitApp}
-              onRefresh={refresh}
             />
           ) : null}
         </>

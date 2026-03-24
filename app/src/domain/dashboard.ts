@@ -15,6 +15,15 @@ export interface UsageWindow {
   until: string;
 }
 
+export interface PlanMeter {
+  id: string;
+  label: string;
+  current: number;
+  limit: number;
+  unit: "percent" | "requests";
+  resetLabel: string;
+}
+
 export interface ProviderSnapshot {
   id: ProviderId;
   displayName: string;
@@ -35,6 +44,7 @@ export interface ProviderSnapshot {
   staleSince: string | null;
   provenance: string[];
   detailMessage: string | null;
+  planMeters: PlanMeter[];
 }
 
 export interface DashboardSummary {
