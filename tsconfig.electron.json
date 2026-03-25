@@ -14,7 +14,7 @@
     ]
   },
   "include": [
-    "app/electron",
+    "app/electron/main",
     "app/src/application",
     "app/src/domain",
     "app/src/providers"

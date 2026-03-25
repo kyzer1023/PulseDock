@@ -41,7 +41,7 @@ This repo ships PulseDock as a Windows-only GitHub Release with a manually downl
    ```
 
 7. Create a GitHub Release for that tag and upload `PulseDock-Setup-<version>.exe`.
-8. Paste the release notes draft from `release-notes/v0.1.1.md` and keep the SmartScreen warning in the notes.
+8. Write the release notes directly in GitHub and keep the SmartScreen warning in the notes.
 
 ## Release Notes Requirements
 

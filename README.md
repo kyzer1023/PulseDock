@@ -1,26 +1,26 @@
 # PulseDock
 
-PulseDock is a Windows-first Electron tray app for monitoring local AI coding usage.
+PulseDock is a Windows tray app for monitoring local AI coding usage from Codex and Cursor.
 
-It currently supports:
+## Features
 
-- Codex usage from local session files
-- Cursor usage from local desktop auth and export data
-- compact tray popup UI
-- provider-specific detail views
-- manual refresh
+- compact tray popup with manual refresh
+- combined cost and token summary
+- provider-specific detail panels for Codex and Cursor
+- local-data-first collection with no CLI bridge requirement
+- packaged Windows installer built with Electron
 
 ## Install
 
-PulseDock is currently distributed through GitHub Releases as a Windows installer.
+PulseDock is distributed through [GitHub Releases](https://github.com/kyzer1023/PulseDock/releases).
 
-1. Open the latest release on [GitHub Releases](https://github.com/kyzer1023/PulseDock/releases).
-2. Download `PulseDock-Setup-<version>.exe`.
-3. Run the installer and complete the setup flow.
+1. Download `PulseDock-Setup-<version>.exe` from the latest release.
+2. Run the installer.
+3. Launch PulseDock from the Start menu or installed shortcut.
 
-This first public release is unsigned. Windows SmartScreen may warn before launch. Use `More info` then `Run anyway` if you trust the release source.
+The installer is unsigned. Windows SmartScreen may warn before launch. Use `More info` and then `Run anyway` if you trust the release source.
 
-Updates are manual for v1. Download and install the newest release over the existing install when a new version is published.
+Updates are manual for v1. Reinstall with the latest release when a new version is published.
 
 ## Stack
 
@@ -44,32 +44,35 @@ Run the app in development mode:
 npm run dev
 ```
 
-Typecheck:
+Validate the project:
 
 ```powershell
 npm run typecheck
+npm test
+npm run test:packaged
 ```
 
-Build:
+Build production assets:
 
 ```powershell
 npm run build
 ```
 
-Package an unpacked Windows build:
-
-```powershell
-npx electron-builder --dir
-```
-
-Build the installer used for GitHub Releases:
+Build the Windows installer:
 
 ```powershell
 npm run dist
 ```
 
-The installer is written to `release/` as `PulseDock-Setup-<version>.exe`.
+Artifacts are written to `release/`.
 
 ## Notes
 
-PulseDock reads real local data directly through reusable provider modules from sibling `codexstats` and `cstats` packages rather than going through a CLI bridge.
+PulseDock uses a small Electron architecture:
+
+- the main process runs provider collectors for Codex and Cursor
+- those collectors read local session, auth, and usage-export files directly from disk
+- a sandboxed preload script exposes a narrow IPC bridge to the renderer
+- the React tray UI renders the aggregated dashboard snapshot returned by that bridge
+
+This keeps the app local-first and avoids depending on an external CLI process just to populate the tray popup.
