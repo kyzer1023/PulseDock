@@ -70,6 +70,7 @@ test("preserves last known provider data as stale when the collector fails", asy
   assert.equal(initial.providers[0].status, "fresh");
   assert.equal(initial.providers[0].quotaStatus, "available");
   assert.equal(initial.providers[0].costStatus, "available");
+  assert.equal(initial.selectedUsageRange, "week");
 
   const stale = await orchestrator.refresh();
   assert.equal(stale.providers[0].status, "stale");
@@ -77,4 +78,51 @@ test("preserves last known provider data as stale when the collector fails", asy
   assert.equal(stale.providers[0].costStatus, "stale");
   assert.match(stale.providers[0].detailMessage ?? "", /timed out/);
   assert.deepEqual(stale.providers[0].quotaMeters.map((meter) => meter.id), ["session"]);
+});
+
+test("updates the selected range through the orchestrator without forcing a refresh", async () => {
+  const calls = [];
+  const collector = {
+    async collect(_now, _previousSnapshots, selectedUsageRange, forceRefresh) {
+      calls.push({ selectedUsageRange, forceRefresh });
+
+      const usageByRange = {
+        today: {
+          label: "Today",
+          since: "2026-03-25T00:00:00.000Z",
+          until: "2026-03-25T12:00:00.000Z",
+        },
+        week: {
+          label: "Last 7 days",
+          since: "2026-03-19T00:00:00.000Z",
+          until: "2026-03-25T12:00:00.000Z",
+        },
+      };
+
+      return [
+        {
+          id: "codex",
+          ok: true,
+          snapshot: makeSnapshot({
+            usageWindow: usageByRange[selectedUsageRange],
+            totalTokens: selectedUsageRange === "today" ? 50 : 210,
+            estimatedCost: selectedUsageRange === "today" ? 0.25 : 1.23,
+          }),
+        },
+      ];
+    },
+  };
+
+  const orchestrator = new ProviderOrchestrator([{ id: "codex", displayName: "Codex" }], collector);
+
+  const initial = await orchestrator.refresh();
+  assert.deepEqual(calls[0], { selectedUsageRange: "week", forceRefresh: true });
+  assert.equal(initial.selectedUsageRange, "week");
+  assert.equal(initial.summary.usageWindow.label, "Last 7 days");
+
+  const today = await orchestrator.setUsageRange("today");
+  assert.deepEqual(calls[1], { selectedUsageRange: "today", forceRefresh: false });
+  assert.equal(today.selectedUsageRange, "today");
+  assert.equal(today.summary.usageWindow.label, "Today");
+  assert.equal(today.summary.totalTokens, 50);
 });

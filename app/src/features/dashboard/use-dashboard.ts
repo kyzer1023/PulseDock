@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import type { DashboardSnapshot } from "@domain/dashboard";
+import type { UsageRangePresetId } from "@domain/usage-range";
 
 const BRIDGE_ERROR_MESSAGE = "PulseDock desktop bridge failed to load. Restart the app.";
 
 export function useDashboard() {
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
   const [bridgeError, setBridgeError] = useState<string | null>(null);
+  const [pendingUsageRange, setPendingUsageRange] = useState<UsageRangePresetId | null>(null);
 
   function getBridge() {
     const bridge = window.pulsedock;
@@ -72,6 +74,25 @@ export function useDashboard() {
     }
   }
 
+  async function setUsageRange(range: UsageRangePresetId): Promise<void> {
+    const bridge = getBridge();
+    if (!bridge) {
+      return;
+    }
+
+    setPendingUsageRange(range);
+
+    try {
+      const nextSnapshot = await bridge.setDashboardUsageRange(range);
+      setSnapshot(nextSnapshot);
+      setBridgeError(null);
+    } catch (error: unknown) {
+      setBridgeError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setPendingUsageRange(null);
+    }
+  }
+
   async function openExternal(url: string): Promise<void> {
     const bridge = getBridge();
     if (!bridge) {
@@ -95,6 +116,8 @@ export function useDashboard() {
     openExternal,
     quitApp,
     refresh,
+    setUsageRange,
     snapshot,
+    pendingUsageRange,
   };
 }

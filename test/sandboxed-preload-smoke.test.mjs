@@ -41,13 +41,21 @@ test("loads the PulseDock preload bridge inside a sandboxed renderer", async () 
     "openExternal",
     "quitApp",
     "refreshDashboard",
+    "setDashboardUsageRange",
   ]);
   assert.deepEqual(payload.initial, {
     providers: [],
     refreshedAt: "2026-03-25T00:00:00.000Z",
+    selectedUsageRange: "week",
   });
   assert.deepEqual(payload.refreshed, {
     providers: [],
     refreshedAt: "2026-03-25T00:05:00.000Z",
+    selectedUsageRange: "today",
+  });
+  assert.deepEqual(payload.ranged, {
+    providers: [],
+    refreshedAt: "2026-03-25T00:06:00.000Z",
+    selectedUsageRange: "month",
   });
 });

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ProviderId } from "@domain/dashboard";
+import { DateFilterDropdown } from "@renderer/components/DateFilterDropdown";
 import { EmptyStatePanel } from "@renderer/components/EmptyStatePanel";
 import { ErrorStatePanel } from "@renderer/components/ErrorStatePanel";
 import { FooterMeta } from "@renderer/components/FooterMeta";
@@ -10,6 +11,7 @@ import { ProviderTabs } from "@renderer/components/ProviderTabs";
 import { StatusStrip } from "@renderer/components/StatusStrip";
 import { SummaryBar } from "@renderer/components/SummaryBar";
 import { useTheme } from "@renderer/hooks/use-theme";
+import { DEFAULT_USAGE_RANGE_PRESET_ID } from "@domain/usage-range";
 import { useDashboard } from "./use-dashboard";
 
 const DASHBOARD_URLS: Record<ProviderId, string> = {
@@ -18,7 +20,15 @@ const DASHBOARD_URLS: Record<ProviderId, string> = {
 };
 
 export function DashboardApp() {
-  const { bridgeError, openExternal, quitApp, refresh, snapshot } = useDashboard();
+  const {
+    bridgeError,
+    openExternal,
+    pendingUsageRange,
+    quitApp,
+    refresh,
+    setUsageRange,
+    snapshot,
+  } = useDashboard();
   const { theme, toggle: toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<ProviderId>("codex");
 
@@ -30,6 +40,8 @@ export function DashboardApp() {
   const showRecovery = bridgeError !== null || allProvidersError;
 
   const activeProvider = providers.find((p) => p.id === activeTab) ?? providers[0] ?? null;
+  const selectedUsageRange = pendingUsageRange ?? snapshot?.selectedUsageRange ?? DEFAULT_USAGE_RANGE_PRESET_ID;
+  const isChangingUsageRange = pendingUsageRange !== null;
 
   return (
     <main className="tray-shell">
@@ -57,10 +69,20 @@ export function DashboardApp() {
             providers={providers}
             onSelect={setActiveTab}
           />
+
           {activeProvider ? (
             <ProviderDetailPanel
               provider={activeProvider}
               onDashboard={() => openExternal(DASHBOARD_URLS[activeProvider.id])}
+              filterSlot={
+                <DateFilterDropdown
+                  value={selectedUsageRange}
+                  onChange={setUsageRange}
+                  accent={activeProvider.id}
+                  disabled={isLoading || snapshot?.loadingState === "refreshing" || isChangingUsageRange}
+                  isLoading={isChangingUsageRange}
+                />
+              }
             />
           ) : null}
         </>

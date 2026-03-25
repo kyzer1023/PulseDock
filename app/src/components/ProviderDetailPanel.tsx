@@ -12,6 +12,7 @@ import { MeterBar } from "./MeterBar";
 interface ProviderDetailPanelProps {
   provider: ProviderSnapshot;
   onDashboard: () => void | Promise<void>;
+  filterSlot?: React.ReactNode;
 }
 
 function getAccent(provider: ProviderSnapshot): "codex" | "cursor" {
@@ -60,6 +61,7 @@ function ExternalLinkIcon() {
 export function ProviderDetailPanel({
   provider,
   onDashboard,
+  filterSlot,
 }: ProviderDetailPanelProps) {
   const accent = getAccent(provider);
   const hasData =
@@ -87,8 +89,11 @@ export function ProviderDetailPanel({
           </div>
         </div>
 
-        <div className={`provider-detail__badge provider-detail__badge--${accent}`}>
-          {provider.topLabel ?? provider.status.toUpperCase()}
+        <div className="provider-detail__hero-actions">
+          <div className={`provider-detail__badge provider-detail__badge--${accent}`}>
+            {provider.topLabel ?? provider.status.toUpperCase()}
+          </div>
+          {filterSlot}
         </div>
       </div>
 

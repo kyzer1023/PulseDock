@@ -1,9 +1,12 @@
 import type { ProviderSnapshot } from "../domain/dashboard.js";
+import type { UsageRangePresetId } from "../domain/usage-range.js";
 
 export interface CollectRequest {
   id: number;
   nowIso: string;
   previousSnapshots: ProviderSnapshot[];
+  selectedUsageRange: UsageRangePresetId;
+  forceRefresh: boolean;
 }
 
 export interface ProviderCollectSuccess {

@@ -1,5 +1,9 @@
-import type { ProviderSnapshot, SectionAvailability } from "../../domain/dashboard.js";
-import { createRecentDateWindow } from "../shared/date-window.js";
+import type { ProviderSnapshot, SectionAvailability, UsageWindow } from "../../domain/dashboard.js";
+import {
+  type UsageRangePresetId,
+  usageRangeCovers,
+} from "../../domain/usage-range.js";
+import { createUsageDateWindow } from "../shared/date-window.js";
 import {
   buildCursorSessionCookie,
   getCursorAuthStateReadOnly,
@@ -20,6 +24,11 @@ interface UsageRow {
   csvCost: string;
 }
 
+interface CursorUsageCache {
+  coveredRange: UsageRangePresetId;
+  rows: UsageRow[];
+}
+
 interface Totals {
   inputTokens: number;
   cacheCreationTokens: number;
@@ -30,6 +39,7 @@ interface Totals {
 }
 
 export interface CursorCostSnapshot {
+  usageWindow: UsageWindow;
   inputTokens: number;
   cachedInputTokens: number;
   outputTokens: number;
@@ -49,14 +59,18 @@ export interface CursorCostSnapshot {
 }
 
 const CURSOR_COST_PROVENANCE = ["Cursor usage export"] as const;
+const CURSOR_ALL_TIME_START_DATE = new Date(2000, 0, 1);
+let cursorUsageCache: CursorUsageCache | null = null;
 
 function buildEmptyCursorCostSnapshot(
   status: SectionAvailability,
   statusMessage: string,
   detailMessage: string,
   costLastRefreshedAt: string | null,
+  usageWindow: UsageWindow,
 ): CursorCostSnapshot {
   return {
+    usageWindow,
     inputTokens: 0,
     cachedInputTokens: 0,
     outputTokens: 0,
@@ -76,8 +90,12 @@ function buildEmptyCursorCostSnapshot(
   };
 }
 
-function buildStaleCursorCostSnapshot(previousSnapshot: ProviderSnapshot): CursorCostSnapshot {
+function buildStaleCursorCostSnapshot(
+  previousSnapshot: ProviderSnapshot,
+  usageWindow: UsageWindow,
+): CursorCostSnapshot {
   return {
+    usageWindow,
     inputTokens: previousSnapshot.inputTokens,
     cachedInputTokens: previousSnapshot.cachedInputTokens,
     outputTokens: previousSnapshot.outputTokens,
@@ -127,6 +145,14 @@ function toLocalDateString(value: string): string {
 function rowInRange(date: string, range: { since: string; until: string }): boolean {
   const normalized = date.replace(/-/g, "");
   return normalized >= range.since && normalized <= range.until;
+}
+
+function dateKeyToLocalDate(dateKey: string): Date {
+  return new Date(
+    Number.parseInt(dateKey.slice(0, 4), 10),
+    Number.parseInt(dateKey.slice(5, 7), 10) - 1,
+    Number.parseInt(dateKey.slice(8, 10), 10),
+  );
 }
 
 function parseCsv(csvText: string): Array<Record<string, string>> {
@@ -323,55 +349,146 @@ async function downloadUsageCsv(range: { startDate: number; endDate: number }): 
   return response.text();
 }
 
-function parseUsageCsv(csvText: string, range: { since: string; until: string }): UsageRow[] {
+function parseUsageCsv(csvText: string): UsageRow[] {
   const parsed = parseCsv(csvText);
 
-  return parsed
-    .map((record) => {
-      const timestamp = record["Date"] ?? "";
-      const date = toLocalDateString(timestamp);
-      const model = (record["Model"] ?? "").trim();
-      const inputCacheWrite = parseIntValue(record["Input (w/ Cache Write)"] ?? "");
-      const inputNoCacheWrite = parseIntValue(record["Input (w/o Cache Write)"] ?? "");
-      const cacheRead = parseIntValue(record["Cache Read"] ?? "");
-      const outputTokens = parseIntValue(record["Output Tokens"] ?? "");
-      const totalTokens = parseIntValue(record["Total Tokens"] ?? "");
+  return parsed.map((record) => {
+    const timestamp = record["Date"] ?? "";
+    const date = toLocalDateString(timestamp);
+    const model = (record["Model"] ?? "").trim();
+    const inputCacheWrite = parseIntValue(record["Input (w/ Cache Write)"] ?? "");
+    const inputNoCacheWrite = parseIntValue(record["Input (w/o Cache Write)"] ?? "");
+    const cacheRead = parseIntValue(record["Cache Read"] ?? "");
+    const outputTokens = parseIntValue(record["Output Tokens"] ?? "");
+    const totalTokens = parseIntValue(record["Total Tokens"] ?? "");
 
-      return {
-        timestamp,
-        date,
-        kind: (record["Kind"] ?? "").trim(),
-        model,
-        provider: detectProvider(model),
-        inputCacheWrite,
-        inputNoCacheWrite,
-        cacheRead,
-        outputTokens,
-        totalTokens,
-        estimatedCost: parseMoneyValue(record["Cost"] ?? ""),
-        csvCost: (record["Cost"] ?? "").trim(),
-      };
-    })
-    .filter((row) => rowInRange(row.date, range));
+    return {
+      timestamp,
+      date,
+      kind: (record["Kind"] ?? "").trim(),
+      model,
+      provider: detectProvider(model),
+      inputCacheWrite,
+      inputNoCacheWrite,
+      cacheRead,
+      outputTokens,
+      totalTokens,
+      estimatedCost: parseMoneyValue(record["Cost"] ?? ""),
+      csvCost: (record["Cost"] ?? "").trim(),
+    };
+  });
+}
+
+function filterUsageRowsByBounds(rows: UsageRow[], range: { since: string; until: string }): UsageRow[] {
+  return rows.filter((row) =>
+    rowInRange(row.date, range),
+  );
+}
+
+function getEarliestUsageRowDate(rows: UsageRow[]): Date | null {
+  const earliest = rows
+    .map((row) => row.date)
+    .sort((left, right) => left.localeCompare(right))[0];
+
+  return earliest ? dateKeyToLocalDate(earliest) : null;
+}
+
+export function getCursorCacheDisposition(
+  cachedRange: UsageRangePresetId | null,
+  requestedRange: UsageRangePresetId,
+  forceRefresh: boolean,
+): { shouldReuse: boolean; fetchRange: UsageRangePresetId } {
+  if (!forceRefresh && cachedRange && usageRangeCovers(cachedRange, requestedRange)) {
+    return {
+      shouldReuse: true,
+      fetchRange: cachedRange,
+    };
+  }
+
+  return {
+    shouldReuse: false,
+    fetchRange: requestedRange,
+  };
+}
+
+export function resetCursorUsageCacheForTests(): void {
+  cursorUsageCache = null;
+}
+
+async function loadCursorUsageRows(
+  now: Date,
+  selectedUsageRange: UsageRangePresetId,
+  forceRefresh: boolean,
+): Promise<{ rows: UsageRow[]; usageWindow: UsageWindow }> {
+  const disposition = getCursorCacheDisposition(
+    cursorUsageCache?.coveredRange ?? null,
+    selectedUsageRange,
+    forceRefresh,
+  );
+
+  if (disposition.shouldReuse && cursorUsageCache) {
+    const window = createUsageDateWindow(now, selectedUsageRange, {
+      earliestAvailableAt:
+        selectedUsageRange === "all" ? getEarliestUsageRowDate(cursorUsageCache.rows) : undefined,
+    });
+
+    return {
+      rows: filterUsageRowsByBounds(cursorUsageCache.rows, {
+        since: window.cursorSince,
+        until: window.cursorUntil,
+      }),
+      usageWindow: window.usageWindow,
+    };
+  }
+
+  const fetchWindow = createUsageDateWindow(now, disposition.fetchRange, {
+    earliestAvailableAt:
+      disposition.fetchRange === "all" ? CURSOR_ALL_TIME_START_DATE : undefined,
+  });
+  const inclusiveUntil = new Date(fetchWindow.untilDate);
+  inclusiveUntil.setHours(23, 59, 59, 999);
+
+  const csvText = await downloadUsageCsv({
+    startDate: fetchWindow.sinceDate.getTime(),
+    endDate: inclusiveUntil.getTime(),
+  });
+  const rows = parseUsageCsv(csvText).filter(hasUsage);
+
+  cursorUsageCache = {
+    coveredRange: disposition.fetchRange,
+    rows,
+  };
+
+  const window = createUsageDateWindow(now, selectedUsageRange, {
+    earliestAvailableAt: selectedUsageRange === "all" ? getEarliestUsageRowDate(rows) : undefined,
+  });
+
+  return {
+    rows: filterUsageRowsByBounds(rows, {
+      since: window.cursorSince,
+      until: window.cursorUntil,
+    }),
+    usageWindow: window.usageWindow,
+  };
 }
 
 export async function collectCursorCost(
   now: Date,
   previousSnapshot: ProviderSnapshot | undefined,
+  selectedUsageRange: UsageRangePresetId,
+  forceRefresh: boolean,
 ): Promise<CursorCostSnapshot> {
-  const window = createRecentDateWindow(now);
+  const fallbackUsageWindow = createUsageDateWindow(now, selectedUsageRange).usageWindow;
 
-  let csvText: string;
+  let usageRows: UsageRow[];
+  let usageWindow = fallbackUsageWindow;
   try {
-    const since = new Date(`${window.cursorSince.slice(0, 4)}-${window.cursorSince.slice(4, 6)}-${window.cursorSince.slice(6, 8)}T00:00:00.000`);
-    const until = new Date(`${window.cursorUntil.slice(0, 4)}-${window.cursorUntil.slice(4, 6)}-${window.cursorUntil.slice(6, 8)}T23:59:59.999`);
-    csvText = await downloadUsageCsv({
-      startDate: since.getTime(),
-      endDate: until.getTime(),
-    });
+    const loaded = await loadCursorUsageRows(now, selectedUsageRange, forceRefresh);
+    usageRows = loaded.rows;
+    usageWindow = loaded.usageWindow;
   } catch (error) {
     if (previousSnapshot && previousSnapshot.costStatus === "available") {
-      return buildStaleCursorCostSnapshot(previousSnapshot);
+      return buildStaleCursorCostSnapshot(previousSnapshot, previousSnapshot.usageWindow);
     }
 
     return buildEmptyCursorCostSnapshot(
@@ -379,20 +496,17 @@ export async function collectCursorCost(
       "Cursor token-cost export is unavailable.",
       error instanceof Error ? error.message : "Cursor cost data is unavailable.",
       previousSnapshot?.costLastRefreshedAt ?? null,
+      fallbackUsageWindow,
     );
   }
-
-  const usageRows = parseUsageCsv(csvText, {
-    since: window.cursorSince,
-    until: window.cursorUntil,
-  }).filter(hasUsage);
 
   if (usageRows.length === 0) {
     return buildEmptyCursorCostSnapshot(
       "unsupported",
       "No recent Cursor token-cost data found.",
-      `No Cursor usage rows were found for ${window.usageWindow.label.toLowerCase()}.`,
+      `No Cursor usage rows were found for ${usageWindow.label.toLowerCase()}.`,
       now.toISOString(),
+      usageWindow,
     );
   }
 
@@ -403,6 +517,7 @@ export async function collectCursorCost(
     : [];
 
   return {
+    usageWindow,
     inputTokens: totals.inputTokens + totals.cacheCreationTokens,
     cachedInputTokens: totals.cachedInputTokens,
     outputTokens: totals.outputTokens,

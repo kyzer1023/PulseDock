@@ -1,3 +1,5 @@
+import type { UsageRangePresetId } from "./usage-range.js";
+
 export type ProviderId = "codex" | "cursor";
 
 export type ProviderStatus =
@@ -85,11 +87,14 @@ export interface DashboardSnapshot {
   lastRefreshedAt: string | null;
   provenance: string[];
   loadingState: LoadingState;
+  selectedUsageRange: UsageRangePresetId;
 }
 
 export interface ProviderContext {
   now: Date;
   previousSnapshot: ProviderSnapshot | undefined;
+  selectedUsageRange: UsageRangePresetId;
+  forceRefresh: boolean;
 }
 
 export interface UsageProvider {
@@ -101,6 +106,7 @@ export interface UsageProvider {
 export interface PulseDockApi {
   getDashboard(): Promise<DashboardSnapshot>;
   refreshDashboard(): Promise<DashboardSnapshot>;
+  setDashboardUsageRange(range: UsageRangePresetId): Promise<DashboardSnapshot>;
   openExternal(url: string): Promise<void>;
   quitApp(): Promise<void>;
   onDashboardChanged(listener: (snapshot: DashboardSnapshot) => void): () => void;

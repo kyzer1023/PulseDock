@@ -19,6 +19,8 @@ async function handleCollect(
       const context: ProviderContext = {
         now,
         previousSnapshot: previousById.get(provider.id),
+        selectedUsageRange: request.selectedUsageRange,
+        forceRefresh: request.forceRefresh,
       };
 
       try {

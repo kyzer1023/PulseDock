@@ -4,4 +4,5 @@ export const IPC_CHANNELS = {
   openExternal: "pulsedock:open-external",
   quitApp: "pulsedock:quit-app",
   refreshDashboard: "pulsedock:refresh-dashboard",
+  setDashboardUsageRange: "pulsedock:set-dashboard-usage-range",
 } as const;

@@ -1,5 +1,6 @@
 import { Worker } from "node:worker_threads";
 import type { ProviderSnapshot } from "../domain/dashboard.js";
+import type { UsageRangePresetId } from "../domain/usage-range.js";
 import type {
   CollectRequest,
   CollectResponse,
@@ -38,7 +39,12 @@ export class ProviderCollector {
     });
   }
 
-  collect(now: Date, previousSnapshots: ProviderSnapshot[]): Promise<ProviderCollectResult[]> {
+  collect(
+    now: Date,
+    previousSnapshots: ProviderSnapshot[],
+    selectedUsageRange: UsageRangePresetId,
+    forceRefresh: boolean,
+  ): Promise<ProviderCollectResult[]> {
     const id = this.nextRequestId;
     this.nextRequestId += 1;
 
@@ -49,6 +55,8 @@ export class ProviderCollector {
         id,
         nowIso: now.toISOString(),
         previousSnapshots,
+        selectedUsageRange,
+        forceRefresh,
       };
 
       this.worker.postMessage(payload);

@@ -6,41 +6,56 @@ import type {
   ProviderSnapshot,
   UsageWindow,
 } from "../domain/dashboard.js";
+import {
+  DEFAULT_USAGE_RANGE_PRESET_ID,
+  type UsageRangePresetId,
+} from "../domain/usage-range.js";
 import { ProviderCollector } from "./provider-collector.js";
+import { createUsageDateWindow } from "../providers/shared/date-window.js";
 
-function createUsageWindow(now: Date): UsageWindow {
-  const since = new Date(now);
-  since.setDate(now.getDate() - 6);
+function createUsageWindow(now: Date, range: UsageRangePresetId, providers: ProviderSnapshot[] = []): UsageWindow {
+  if (range !== "all") {
+    return createUsageDateWindow(now, range).usageWindow;
+  }
 
-  return {
-    label: "Last 7 days",
-    since: since.toISOString(),
-    until: now.toISOString(),
-  };
+  const earliestLoadedDate = providers
+    .filter(isLoadedProvider)
+    .map((provider) => provider.usageWindow.since)
+    .map((value) => new Date(value))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .sort((left, right) => left.getTime() - right.getTime())[0];
+
+  return createUsageDateWindow(now, range, { earliestAvailableAt: earliestLoadedDate }).usageWindow;
 }
 
-function createEmptySummary(now: Date, providerCount: number): DashboardSummary {
+function createEmptySummary(
+  now: Date,
+  providerCount: number,
+  selectedUsageRange: UsageRangePresetId,
+): DashboardSummary {
   return {
     estimatedCost: 0,
     totalTokens: 0,
     providerCount,
     loadedProviderCount: 0,
-    usageWindow: createUsageWindow(now),
+    usageWindow: createUsageWindow(now, selectedUsageRange),
   };
 }
 
 function createInitialSnapshot(
   providerCount: number,
+  selectedUsageRange: UsageRangePresetId,
 ): DashboardSnapshot {
   const now = new Date();
 
   return {
-    summary: createEmptySummary(now, providerCount),
+    summary: createEmptySummary(now, providerCount, selectedUsageRange),
     providers: [],
     notices: [],
     lastRefreshedAt: null,
     provenance: [],
     loadingState: "loading",
+    selectedUsageRange,
   };
 }
 
@@ -78,9 +93,11 @@ function buildSnapshot(
   providers: ProviderSnapshot[],
   loadingState: DashboardSnapshot["loadingState"],
   refreshedAt: string | null,
+  selectedUsageRange: UsageRangePresetId,
 ): DashboardSnapshot {
   const loadedProviders = providers.filter(isLoadedProvider);
-  const usageWindow = loadedProviders[0]?.usageWindow ?? createUsageWindow(new Date());
+  const now = refreshedAt ? new Date(refreshedAt) : new Date();
+  const usageWindow = createUsageWindow(now, selectedUsageRange, providers);
 
   return {
     summary: {
@@ -95,6 +112,7 @@ function buildSnapshot(
     lastRefreshedAt: refreshedAt,
     provenance: uniqueValues(providers.flatMap((provider) => provider.provenance)),
     loadingState,
+    selectedUsageRange,
   };
 }
 
@@ -162,6 +180,7 @@ export class ProviderOrchestrator extends EventEmitter {
   private readonly collector: ProviderCollector;
   private pendingRefresh: Promise<DashboardSnapshot> | null = null;
   private snapshot: DashboardSnapshot;
+  private selectedUsageRange: UsageRangePresetId = DEFAULT_USAGE_RANGE_PRESET_ID;
 
   constructor(
     providers: Array<{ id: ProviderSnapshot["id"]; displayName: string }>,
@@ -170,7 +189,7 @@ export class ProviderOrchestrator extends EventEmitter {
     super();
     this.providers = providers;
     this.collector = collector;
-    this.snapshot = createInitialSnapshot(providers.length);
+    this.snapshot = createInitialSnapshot(providers.length, this.selectedUsageRange);
   }
 
   getSnapshot(): DashboardSnapshot {
@@ -178,6 +197,21 @@ export class ProviderOrchestrator extends EventEmitter {
   }
 
   async refresh(): Promise<DashboardSnapshot> {
+    return this.collectAndPublish(this.selectedUsageRange, true);
+  }
+
+  async setUsageRange(range: UsageRangePresetId): Promise<DashboardSnapshot> {
+    if (range === this.selectedUsageRange && this.snapshot.lastRefreshedAt !== null) {
+      return this.snapshot;
+    }
+
+    return this.collectAndPublish(range, false);
+  }
+
+  private async collectAndPublish(
+    selectedUsageRange: UsageRangePresetId,
+    forceRefresh: boolean,
+  ): Promise<DashboardSnapshot> {
     if (this.pendingRefresh) {
       return this.pendingRefresh;
     }
@@ -193,10 +227,15 @@ export class ProviderOrchestrator extends EventEmitter {
 
     this.pendingRefresh = (async () => {
       const now = new Date();
-      const usageWindow = createUsageWindow(now);
+      const usageWindow = createUsageWindow(now, selectedUsageRange, current.providers);
       const previousById = new Map(current.providers.map((provider) => [provider.id, provider]));
 
-      const results = await this.collector.collect(now, current.providers);
+      const results = await this.collector.collect(
+        now,
+        current.providers,
+        selectedUsageRange,
+        forceRefresh,
+      );
 
       const providers = this.providers.map((provider, index) => {
         const result = results[index];
@@ -221,7 +260,13 @@ export class ProviderOrchestrator extends EventEmitter {
         );
       });
 
-      this.snapshot = buildSnapshot(providers, "idle", now.toISOString());
+      this.selectedUsageRange = selectedUsageRange;
+      this.snapshot = buildSnapshot(
+        providers,
+        "idle",
+        now.toISOString(),
+        this.selectedUsageRange,
+      );
       this.emit("changed", this.snapshot);
 
       return this.snapshot;

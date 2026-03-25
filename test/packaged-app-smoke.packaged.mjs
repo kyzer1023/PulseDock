@@ -55,6 +55,7 @@ test("packaged app loads the sandboxed preload bridge from the final artifact", 
     "openExternal",
     "quitApp",
     "refreshDashboard",
+    "setDashboardUsageRange",
   ]);
   assert.match(payload.bodyText, /Refresh/);
   assert.deepEqual(payload.initial.summary, {
@@ -63,10 +64,11 @@ test("packaged app loads the sandboxed preload bridge from the final artifact", 
     providerCount: 0,
     loadedProviderCount: 0,
     usageWindow: {
-      label: "Last 24h",
-      since: "2026-03-24T00:00:00.000Z",
+      label: "Last 7 days",
+      since: "2026-03-19T00:00:00.000Z",
       until: "2026-03-25T00:00:00.000Z",
     },
   });
+  assert.equal(payload.initial.selectedUsageRange, "week");
   assert.equal(payload.refreshed.loadingState, "idle");
 });

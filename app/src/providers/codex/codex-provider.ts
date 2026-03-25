@@ -8,7 +8,12 @@ export const codexProvider: UsageProvider = {
   displayName: "Codex",
   async getSnapshot(context: ProviderContext): Promise<ProviderSnapshot> {
     const [costSnapshot, quotaSnapshot] = await Promise.all([
-      collectCodexLocalCost(context.now, context.previousSnapshot),
+      collectCodexLocalCost(
+        context.now,
+        context.previousSnapshot,
+        context.selectedUsageRange,
+        context.forceRefresh,
+      ),
       fetchCodexQuota(context.now, context.previousSnapshot),
     ]);
 
@@ -20,11 +25,7 @@ export const codexProvider: UsageProvider = {
       context,
       costSnapshot,
       quotaSnapshot,
-      usageWindow: {
-        label: "Last 7 days",
-        since: new Date(context.now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(),
-        until: context.now.toISOString(),
-      },
+      usageWindow: costSnapshot.usageWindow,
     });
   },
 };

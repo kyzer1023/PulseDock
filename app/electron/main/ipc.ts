@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { ProviderOrchestrator } from "../../src/application/provider-orchestrator.js";
 import { IPC_CHANNELS } from "../../src/domain/ipc.js";
 import type { DashboardSnapshot } from "../../src/domain/dashboard.js";
+import type { UsageRangePresetId } from "../../src/domain/usage-range.js";
 import { assertAllowedExternalUrl } from "../../src/domain/external-url.js";
 
 type DashboardListener = (snapshot: DashboardSnapshot) => void;
@@ -24,6 +25,9 @@ export function registerDashboardIpc(
   );
   ipcMain.handle(IPC_CHANNELS.quitApp, () => app.quit());
   ipcMain.handle(IPC_CHANNELS.refreshDashboard, () => orchestrator.refresh());
+  ipcMain.handle(IPC_CHANNELS.setDashboardUsageRange, (_event, range: UsageRangePresetId) =>
+    orchestrator.setUsageRange(range),
+  );
 
   return () => {
     orchestrator.off("changed", onChanged);
@@ -31,6 +35,7 @@ export function registerDashboardIpc(
     ipcMain.removeHandler(IPC_CHANNELS.openExternal);
     ipcMain.removeHandler(IPC_CHANNELS.quitApp);
     ipcMain.removeHandler(IPC_CHANNELS.refreshDashboard);
+    ipcMain.removeHandler(IPC_CHANNELS.setDashboardUsageRange);
   };
 }
 
@@ -41,11 +46,16 @@ export function registerStaticDashboardIpc(snapshot: DashboardSnapshot): () => v
   );
   ipcMain.handle(IPC_CHANNELS.quitApp, () => app.quit());
   ipcMain.handle(IPC_CHANNELS.refreshDashboard, () => snapshot);
+  ipcMain.handle(IPC_CHANNELS.setDashboardUsageRange, (_event, range: UsageRangePresetId) => ({
+    ...snapshot,
+    selectedUsageRange: range,
+  }));
 
   return () => {
     ipcMain.removeHandler(IPC_CHANNELS.getDashboard);
     ipcMain.removeHandler(IPC_CHANNELS.openExternal);
     ipcMain.removeHandler(IPC_CHANNELS.quitApp);
     ipcMain.removeHandler(IPC_CHANNELS.refreshDashboard);
+    ipcMain.removeHandler(IPC_CHANNELS.setDashboardUsageRange);
   };
 }

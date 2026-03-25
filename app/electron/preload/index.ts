@@ -15,6 +15,9 @@ const api: PulseDockApi = {
   refreshDashboard() {
     return ipcRenderer.invoke(IPC_CHANNELS.refreshDashboard);
   },
+  setDashboardUsageRange(range) {
+    return ipcRenderer.invoke(IPC_CHANNELS.setDashboardUsageRange, range);
+  },
   onDashboardChanged(listener) {
     const wrapped = (_event: Electron.IpcRendererEvent, snapshot: Parameters<typeof listener>[0]) => {
       listener(snapshot);

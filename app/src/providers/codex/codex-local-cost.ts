@@ -2,8 +2,9 @@ import { createReadStream, promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
-import type { ProviderSnapshot, SectionAvailability } from "../../domain/dashboard.js";
-import { createRecentDateWindow } from "../shared/date-window.js";
+import type { ProviderSnapshot, SectionAvailability, UsageWindow } from "../../domain/dashboard.js";
+import type { UsageRangePresetId } from "../../domain/usage-range.js";
+import { createUsageDateWindow } from "../shared/date-window.js";
 import { mapCodexWarnings } from "../shared/warning-text.js";
 
 interface UsageSnapshot {
@@ -36,7 +37,20 @@ interface ModelPricing {
   outputPerMillionUsd: number;
 }
 
+interface ScannedSessionResult {
+  session: SessionSummary;
+  events: NormalizedUsageEvent[];
+}
+
+interface CodexScanCache {
+  codexHome: string;
+  timezone: string;
+  discoveryWarnings: string[];
+  scanned: ScannedSessionResult[];
+}
+
 export interface CodexLocalCostSnapshot {
+  usageWindow: UsageWindow;
   inputTokens: number;
   cachedInputTokens: number;
   outputTokens: number;
@@ -57,6 +71,7 @@ export interface CodexLocalCostSnapshot {
 
 const DEFAULT_FALLBACK_MODEL = "gpt-5-codex";
 const CODEX_LOCAL_PROVENANCE = "Codex local sessions";
+let codexScanCache: CodexScanCache | null = null;
 
 const PRICING: Record<string, ModelPricing> = {
   "gpt-5": { inputPerMillionUsd: 1.25, cachedInputPerMillionUsd: 0.125, outputPerMillionUsd: 10 },
@@ -92,9 +107,11 @@ function buildEmptyCodexCostSnapshot(options: {
   detailMessage: string;
   hasWarnings?: boolean;
   statusMessage: string;
+  usageWindow: UsageWindow;
   warnings: string[];
 }): CodexLocalCostSnapshot {
   return {
+    usageWindow: options.usageWindow,
     inputTokens: 0,
     cachedInputTokens: 0,
     outputTokens: 0,
@@ -116,6 +133,14 @@ function buildEmptyCodexCostSnapshot(options: {
 
 function resolveDefaultTimezone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+}
+
+function localDateKeyToLocalDate(dateKey: string): Date {
+  return new Date(
+    Number.parseInt(dateKey.slice(0, 4), 10),
+    Number.parseInt(dateKey.slice(5, 7), 10) - 1,
+    Number.parseInt(dateKey.slice(8, 10), 10),
+  );
 }
 
 function toLocalDateKey(timestamp: string, timezone: string): string {
@@ -393,7 +418,7 @@ async function scanSessionFile(
   absolutePath: string,
   sessionId: string,
   options: { timezone: string; fallbackModel: string },
-): Promise<{ session: SessionSummary; events: NormalizedUsageEvent[] }> {
+): Promise<ScannedSessionResult> {
   const warnings: string[] = [];
 
   const events: NormalizedUsageEvent[] = [];
@@ -517,24 +542,43 @@ function summarizeEvents(events: Array<NormalizedUsageEvent & { estimatedCost: n
   );
 }
 
-export async function collectCodexLocalCost(
-  now: Date,
-  previousSnapshot: ProviderSnapshot | undefined,
-): Promise<CodexLocalCostSnapshot> {
+function getEarliestCodexEventDate(scanned: ScannedSessionResult[]): Date | null {
+  const earliestKey = scanned
+    .flatMap((entry) => entry.events)
+    .map((event) => event.localDateKey)
+    .sort((left, right) => left.localeCompare(right))[0];
+
+  return earliestKey ? localDateKeyToLocalDate(earliestKey) : null;
+}
+
+export function resetCodexLocalCostCacheForTests(): void {
+  codexScanCache = null;
+}
+
+async function loadCodexScanCache(forceRefresh: boolean): Promise<{
+  codexHome: string;
+  discoveryWarnings: string[];
+  scanned: ScannedSessionResult[];
+}> {
   const timezone = resolveDefaultTimezone();
   const codexHome = resolveCodexHome(process.env);
-  const discovery = await discoverRolloutFiles(codexHome);
 
-  if (discovery.files.length === 0) {
-    return buildEmptyCodexCostSnapshot({
-      warnings: mapCodexWarnings(discovery.warnings),
-      detailMessage: "No Codex session data was found under the local Codex home.",
-      statusMessage: "Local Codex session data is unavailable.",
-      costLastRefreshedAt: previousSnapshot?.costLastRefreshedAt ?? null,
-    });
+  if (
+    !forceRefresh &&
+    codexScanCache &&
+    codexScanCache.codexHome === codexHome &&
+    codexScanCache.timezone === timezone
+  ) {
+    return {
+      codexHome,
+      discoveryWarnings: codexScanCache.discoveryWarnings,
+      scanned: codexScanCache.scanned,
+    };
   }
 
-  const scanned: Array<Awaited<ReturnType<typeof scanSessionFile>>> = [];
+  const discovery = await discoverRolloutFiles(codexHome);
+  const scanned: ScannedSessionResult[] = [];
+
   for (const filePath of discovery.files) {
     scanned.push(
       await scanSessionFile(filePath, normalizePathSegments(path.relative(path.join(codexHome, "sessions"), filePath)), {
@@ -543,7 +587,43 @@ export async function collectCodexLocalCost(
       }),
     );
   }
-  const window = createRecentDateWindow(now);
+
+  codexScanCache = {
+    codexHome,
+    timezone,
+    discoveryWarnings: discovery.warnings,
+    scanned,
+  };
+
+  return {
+    codexHome,
+    discoveryWarnings: discovery.warnings,
+    scanned,
+  };
+}
+
+export async function collectCodexLocalCost(
+  now: Date,
+  previousSnapshot: ProviderSnapshot | undefined,
+  selectedUsageRange: UsageRangePresetId,
+  forceRefresh: boolean,
+): Promise<CodexLocalCostSnapshot> {
+  const fallbackUsageWindow = createUsageDateWindow(now, selectedUsageRange).usageWindow;
+  const { discoveryWarnings, scanned } = await loadCodexScanCache(forceRefresh);
+
+  if (scanned.length === 0) {
+    return buildEmptyCodexCostSnapshot({
+      warnings: mapCodexWarnings(discoveryWarnings),
+      detailMessage: "No Codex session data was found under the local Codex home.",
+      statusMessage: "Local Codex session data is unavailable.",
+      costLastRefreshedAt: previousSnapshot?.costLastRefreshedAt ?? null,
+      usageWindow: fallbackUsageWindow,
+    });
+  }
+
+  const window = createUsageDateWindow(now, selectedUsageRange, {
+    earliestAvailableAt: selectedUsageRange === "all" ? getEarliestCodexEventDate(scanned) : undefined,
+  });
   const sessionsInRange = scanned.filter((entry) =>
     hasEventInRange(entry.events, window.codexSince, window.codexUntil),
   );
@@ -558,7 +638,7 @@ export async function collectCodexLocalCost(
   if (recentEvents.length === 0) {
     const warnings = mapCodexWarnings(
       new Set([
-        ...discovery.warnings,
+        ...discoveryWarnings,
         ...scanned.flatMap((entry) => entry.session.warnings),
       ]),
     );
@@ -569,6 +649,7 @@ export async function collectCodexLocalCost(
       hasWarnings: warnings.length > 0,
       statusMessage: warnings.length > 0 ? "Codex local cost data is incomplete." : "No recent Codex cost data found.",
       costLastRefreshedAt: previousSnapshot?.costLastRefreshedAt ?? now.toISOString(),
+      usageWindow: window.usageWindow,
     });
   }
 
@@ -591,13 +672,14 @@ export async function collectCodexLocalCost(
   );
   const warnings = mapCodexWarnings(
     new Set([
-      ...discovery.warnings,
+      ...discoveryWarnings,
       ...scanned.flatMap((entry) => entry.session.warnings),
       ...recentEvents.flatMap((event) => event.warnings),
     ]),
   );
 
   return {
+    usageWindow: window.usageWindow,
     inputTokens: totals.inputTokens,
     cachedInputTokens: totals.cachedInputTokens,
     outputTokens: totals.outputTokens,

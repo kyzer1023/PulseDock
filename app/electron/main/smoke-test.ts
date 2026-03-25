@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { app, BrowserWindow, type Event } from "electron";
 import type { DashboardSnapshot } from "../../src/domain/dashboard.js";
+import { DEFAULT_USAGE_RANGE_PRESET_ID } from "../../src/domain/usage-range.js";
 import { registerStaticDashboardIpc } from "./ipc.js";
 import { createPopupWindow } from "./window.js";
 
@@ -12,8 +13,8 @@ const SMOKE_SNAPSHOT: DashboardSnapshot = {
     providerCount: 0,
     loadedProviderCount: 0,
     usageWindow: {
-      label: "Last 24h",
-      since: "2026-03-24T00:00:00.000Z",
+      label: "Last 7 days",
+      since: "2026-03-19T00:00:00.000Z",
       until: "2026-03-25T00:00:00.000Z",
     },
   },
@@ -22,6 +23,7 @@ const SMOKE_SNAPSHOT: DashboardSnapshot = {
   lastRefreshedAt: "2026-03-25T00:00:00.000Z",
   provenance: ["Packaged smoke test"],
   loadingState: "idle",
+  selectedUsageRange: DEFAULT_USAGE_RANGE_PRESET_ID,
 };
 
 async function waitForRenderer(window: BrowserWindow): Promise<void> {
