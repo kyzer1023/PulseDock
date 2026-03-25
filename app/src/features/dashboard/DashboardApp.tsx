@@ -23,7 +23,6 @@ export function DashboardApp() {
   const {
     bridgeError,
     openExternal,
-    pendingUsageRange,
     quitApp,
     refresh,
     setUsageRange,
@@ -40,8 +39,9 @@ export function DashboardApp() {
   const showRecovery = bridgeError !== null || allProvidersError;
 
   const activeProvider = providers.find((p) => p.id === activeTab) ?? providers[0] ?? null;
-  const selectedUsageRange = pendingUsageRange ?? snapshot?.selectedUsageRange ?? DEFAULT_USAGE_RANGE_PRESET_ID;
-  const isChangingUsageRange = pendingUsageRange !== null;
+  const selectedUsageRange = snapshot?.selectedUsageRange ?? DEFAULT_USAGE_RANGE_PRESET_ID;
+  const isChangingUsageRange = snapshot?.loadingState === "switching";
+  const showSkeletonState = isLoading || isChangingUsageRange;
 
   return (
     <main className="tray-shell">
@@ -53,7 +53,7 @@ export function DashboardApp() {
         onQuit={quitApp}
       />
 
-      <SummaryBar summary={snapshot?.summary ?? null} isLoading={isLoading} />
+      <SummaryBar summary={snapshot?.summary ?? null} isLoading={showSkeletonState} />
 
       {showRecovery ? (
         <ErrorStatePanel
@@ -70,7 +70,7 @@ export function DashboardApp() {
             onSelect={setActiveTab}
           />
 
-          {activeProvider ? (
+          {activeProvider && !showSkeletonState ? (
             <ProviderDetailPanel
               provider={activeProvider}
               onDashboard={() => openExternal(DASHBOARD_URLS[activeProvider.id])}
@@ -79,11 +79,13 @@ export function DashboardApp() {
                   value={selectedUsageRange}
                   onChange={setUsageRange}
                   accent={activeProvider.id}
-                  disabled={isLoading || snapshot?.loadingState === "refreshing" || isChangingUsageRange}
+                  disabled={showSkeletonState || snapshot?.loadingState === "refreshing"}
                   isLoading={isChangingUsageRange}
                 />
               }
             />
+          ) : activeProvider ? (
+            <LoadingCard />
           ) : null}
         </>
       ) : isLoading ? (

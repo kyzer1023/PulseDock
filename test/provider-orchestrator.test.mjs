@@ -125,4 +125,9 @@ test("updates the selected range through the orchestrator without forcing a refr
   assert.equal(today.selectedUsageRange, "today");
   assert.equal(today.summary.usageWindow.label, "Today");
   assert.equal(today.summary.totalTokens, 50);
+
+  const cachedWeek = await orchestrator.setUsageRange("week");
+  assert.equal(cachedWeek.selectedUsageRange, "week");
+  assert.equal(cachedWeek.summary.usageWindow.label, "Last 7 days");
+  assert.equal(calls.length, 2);
 });

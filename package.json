@@ -1,6 +1,6 @@
 {
   "name": "pulsedock",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "Windows-first tray utility for local Codex and Cursor usage snapshots.",
   "author": "kyzer1023",

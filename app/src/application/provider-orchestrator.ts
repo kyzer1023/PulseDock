@@ -180,6 +180,7 @@ export class ProviderOrchestrator extends EventEmitter {
   private readonly collector: ProviderCollector;
   private pendingRefresh: Promise<DashboardSnapshot> | null = null;
   private snapshot: DashboardSnapshot;
+  private readonly snapshotCache = new Map<UsageRangePresetId, DashboardSnapshot>();
   private selectedUsageRange: UsageRangePresetId = DEFAULT_USAGE_RANGE_PRESET_ID;
 
   constructor(
@@ -197,11 +198,24 @@ export class ProviderOrchestrator extends EventEmitter {
   }
 
   async refresh(): Promise<DashboardSnapshot> {
+    this.snapshotCache.clear();
     return this.collectAndPublish(this.selectedUsageRange, true);
   }
 
   async setUsageRange(range: UsageRangePresetId): Promise<DashboardSnapshot> {
     if (range === this.selectedUsageRange && this.snapshot.lastRefreshedAt !== null) {
+      return this.snapshot;
+    }
+
+    const cachedSnapshot = this.snapshotCache.get(range);
+    if (cachedSnapshot) {
+      this.selectedUsageRange = range;
+      this.snapshot = {
+        ...cachedSnapshot,
+        loadingState: "idle",
+        selectedUsageRange: range,
+      };
+      this.emit("changed", this.snapshot);
       return this.snapshot;
     }
 
@@ -217,11 +231,17 @@ export class ProviderOrchestrator extends EventEmitter {
     }
 
     const current = this.snapshot;
-    const loadingState = current.lastRefreshedAt === null ? "loading" : "refreshing";
+    const loadingState =
+      current.lastRefreshedAt === null
+        ? "loading"
+        : forceRefresh
+          ? "refreshing"
+          : "switching";
 
     this.snapshot = {
       ...current,
       loadingState,
+      selectedUsageRange,
     };
     this.emit("changed", this.snapshot);
 
@@ -267,6 +287,7 @@ export class ProviderOrchestrator extends EventEmitter {
         now.toISOString(),
         this.selectedUsageRange,
       );
+      this.snapshotCache.set(this.selectedUsageRange, this.snapshot);
       this.emit("changed", this.snapshot);
 
       return this.snapshot;

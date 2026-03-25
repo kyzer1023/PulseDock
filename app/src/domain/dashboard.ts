@@ -9,7 +9,7 @@ export type ProviderStatus =
   | "error"
   | "empty";
 
-export type LoadingState = "idle" | "loading" | "refreshing";
+export type LoadingState = "idle" | "loading" | "refreshing" | "switching";
 
 export interface UsageWindow {
   label: string;
