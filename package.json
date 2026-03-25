@@ -1,8 +1,18 @@
 {
   "name": "pulsedock",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Windows-first tray utility for local Codex and Cursor usage snapshots.",
+  "author": "kyzer1023",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kyzer1023/PulseDock.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kyzer1023/PulseDock/issues"
+  },
+  "homepage": "https://github.com/kyzer1023/PulseDock#readme",
   "type": "module",
   "main": "dist-electron/electron/main/main.js",
   "scripts": {
@@ -42,6 +52,7 @@
   "build": {
     "appId": "com.kyzer.pulsedock",
     "productName": "PulseDock",
+    "artifactName": "${productName}-Setup-${version}.${ext}",
     "directories": {
       "buildResources": "build",
       "output": "release"
