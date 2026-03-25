@@ -429,67 +429,77 @@ button {
 
 /* ── Plan meter bars ── */
 
-.plan-meters {
+.quota-meters {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.plan-meter {
+.quota-meter {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.plan-meter__row {
+.quota-meter__row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   font-size: 13px;
 }
 
-.plan-meter__label {
+.quota-meter__label {
   color: var(--text-primary);
   font-weight: 600;
 }
 
-.plan-meter__value {
+.quota-meter__value {
   font-weight: 700;
   font-size: 13px;
 }
 
-.plan-meter__value--codex {
+.quota-meter__value--codex {
   color: var(--accent-codex);
 }
 
-.plan-meter__value--cursor {
+.quota-meter__value--cursor {
   color: var(--accent-cursor);
 }
 
-.plan-meter__track {
+.quota-meter__track {
   height: 6px;
   border-radius: 3px;
   background: var(--track-bg);
   overflow: hidden;
 }
 
-.plan-meter__fill {
+.quota-meter__fill {
   height: 100%;
   border-radius: 3px;
   transition: width 400ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.plan-meter__fill--codex {
+.quota-meter__fill--codex {
   background: var(--accent-codex);
 }
 
-.plan-meter__fill--cursor {
+.quota-meter__fill--cursor {
   background: var(--accent-cursor);
 }
 
-.plan-meter__meta {
+.quota-meter__meta {
   font-size: 10px;
   color: var(--text-tertiary);
+}
+
+.provider-detail__note {
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-inset);
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
 }
 
 /* ── Usage bars (token breakdown) ── */

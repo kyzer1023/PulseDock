@@ -7,7 +7,7 @@ declare module "*.png" {
 
 declare global {
   interface Window {
-    pulsedock: PulseDockApi;
+    pulsedock?: PulseDockApi;
   }
 }
 

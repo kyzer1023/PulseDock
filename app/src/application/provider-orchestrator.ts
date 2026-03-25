@@ -4,9 +4,9 @@ import type {
   DashboardSnapshot,
   DashboardSummary,
   ProviderSnapshot,
-  UsageProvider,
   UsageWindow,
 } from "../domain/dashboard.js";
+import { ProviderCollector } from "./provider-collector.js";
 
 function createUsageWindow(now: Date): UsageWindow {
   const since = new Date(now);
@@ -72,13 +72,6 @@ function buildNotices(providers: ProviderSnapshot[]): DashboardNotice[] {
     });
   }
 
-  if (warnings.length > 0 && errors.length === 0 && stale.length === 0) {
-    notices.push({
-      level: "warning",
-      message: "Some provider data is approximate and should be treated as advisory.",
-    });
-  }
-
   return notices;
 }
 
@@ -107,7 +100,7 @@ function buildSnapshot(
 }
 
 function buildProviderErrorSnapshot(
-  provider: UsageProvider,
+  provider: { id: ProviderSnapshot["id"]; displayName: string },
   previousSnapshot: ProviderSnapshot | undefined,
   usageWindow: UsageWindow,
   cause: unknown,
@@ -116,6 +109,24 @@ function buildProviderErrorSnapshot(
     cause instanceof Error && cause.message.trim().length > 0
       ? cause.message
       : `${provider.displayName} data could not be loaded.`;
+
+  if (previousSnapshot) {
+    return {
+      ...previousSnapshot,
+      status: "stale",
+      staleSince: previousSnapshot.staleSince ?? new Date().toISOString(),
+      detailMessage,
+      warnings: Array.from(new Set([...previousSnapshot.warnings, "Showing last known provider data."])),
+      quotaStatus:
+        previousSnapshot.quotaStatus === "available"
+          ? "stale"
+          : previousSnapshot.quotaStatus,
+      costStatus:
+        previousSnapshot.costStatus === "available"
+          ? "stale"
+          : previousSnapshot.costStatus,
+    };
+  }
 
   return {
     id: provider.id,
@@ -133,22 +144,33 @@ function buildProviderErrorSnapshot(
     activityCount: 0,
     activityLabel: provider.id === "codex" ? "Sessions" : "Active days",
     warnings: [],
-    lastRefreshedAt: previousSnapshot?.lastRefreshedAt ?? null,
+    lastRefreshedAt: null,
     staleSince: null,
-    provenance: previousSnapshot?.provenance ?? [],
+    provenance: [],
     detailMessage,
-    planMeters: [],
+    quotaStatus: "unsupported",
+    quotaStatusMessage: null,
+    quotaLastRefreshedAt: null,
+    costStatus: "unsupported",
+    costStatusMessage: null,
+    costLastRefreshedAt: null,
+    quotaMeters: [],
   };
 }
 
 export class ProviderOrchestrator extends EventEmitter {
-  private readonly providers: UsageProvider[];
+  private readonly providers: Array<{ id: ProviderSnapshot["id"]; displayName: string }>;
+  private readonly collector: ProviderCollector;
   private pendingRefresh: Promise<DashboardSnapshot> | null = null;
   private snapshot: DashboardSnapshot;
 
-  constructor(providers: UsageProvider[]) {
+  constructor(
+    providers: Array<{ id: ProviderSnapshot["id"]; displayName: string }>,
+    collector: ProviderCollector,
+  ) {
     super();
     this.providers = providers;
+    this.collector = collector;
     this.snapshot = createInitialSnapshot(providers.length);
   }
 
@@ -175,30 +197,28 @@ export class ProviderOrchestrator extends EventEmitter {
       const usageWindow = createUsageWindow(now);
       const previousById = new Map(current.providers.map((provider) => [provider.id, provider]));
 
-      const results = await Promise.allSettled(
-        this.providers.map((provider) =>
-          provider.getSnapshot({
-            now,
-            previousSnapshot: previousById.get(provider.id),
-          }),
-        ),
-      );
+      const results = await this.collector.collect(now, current.providers);
 
-      const providers = results.map((result, index) => {
-        const provider = this.providers[index];
-        if (!provider) {
-          throw new Error(`Missing provider definition at index ${index}.`);
+      const providers = this.providers.map((provider, index) => {
+        const result = results[index];
+        if (!result || result.id !== provider.id) {
+          return buildProviderErrorSnapshot(
+            provider,
+            previousById.get(provider.id),
+            usageWindow,
+            new Error("Collector returned provider data out of order."),
+          );
         }
 
-        if (result.status === "fulfilled") {
-          return result.value;
+        if (result.ok) {
+          return result.snapshot;
         }
 
         return buildProviderErrorSnapshot(
           provider,
           previousById.get(provider.id),
           usageWindow,
-          result.reason,
+          new Error(result.errorMessage),
         );
       });
 

@@ -6,7 +6,7 @@ import {
 } from "@renderer/lib/formatters";
 import chatgptIcon from "@renderer/assets/chatgpt.png";
 import cursorIcon from "@renderer/assets/cursor.png";
-import { PlanMeterBar } from "./PlanMeterBar";
+import { QuotaMeterBar } from "./QuotaMeterBar";
 import { UsageBar } from "./UsageBar";
 
 interface ProviderDetailPanelProps {
@@ -66,7 +66,10 @@ export function ProviderDetailPanel({
     provider.status === "fresh" || provider.status === "warning" || provider.status === "stale";
   const usageBreakdown = getUsageBreakdown(provider);
   const icon = provider.id === "codex" ? chatgptIcon : cursorIcon;
-  const hasMeters = provider.planMeters.length > 0;
+  const hasQuotaSection =
+    provider.quotaMeters.length > 0 ||
+    provider.quotaStatus !== "unsupported" ||
+    provider.quotaStatusMessage !== null;
 
   return (
     <section className="provider-detail">
@@ -89,14 +92,17 @@ export function ProviderDetailPanel({
         </div>
       </div>
 
-      {hasMeters ? (
+      {hasQuotaSection ? (
         <div className="provider-detail__section">
-          <div className="provider-detail__section-label">Plan</div>
-          <div className="plan-meters">
-            {provider.planMeters.map((meter) => (
-              <PlanMeterBar accent={accent} key={meter.id} meter={meter} />
+          <div className="provider-detail__section-label">Quota</div>
+          <div className="quota-meters">
+            {provider.quotaMeters.map((meter) => (
+              <QuotaMeterBar accent={accent} key={meter.id} meter={meter} />
             ))}
           </div>
+          {provider.quotaMeters.length === 0 && provider.quotaStatusMessage ? (
+            <div className="provider-detail__note">{provider.quotaStatusMessage}</div>
+          ) : null}
         </div>
       ) : null}
 

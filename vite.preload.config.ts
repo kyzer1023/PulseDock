@@ -1,11 +1,7 @@
 import path from "node:path";
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-  base: "./",
-  root: path.resolve(__dirname, "app"),
-  plugins: [react()],
   resolve: {
     alias: {
       "@application": path.resolve(__dirname, "app/src/application"),
@@ -15,13 +11,20 @@ export default defineConfig({
       "@styles": path.resolve(__dirname, "app/src/styles"),
     },
   },
-  server: {
-    host: "127.0.0.1",
-    port: 5173,
-    strictPort: true,
-  },
   build: {
-    outDir: path.resolve(__dirname, "dist/renderer"),
-    emptyOutDir: true,
+    emptyOutDir: false,
+    lib: {
+      entry: path.resolve(__dirname, "app/electron/preload/index.ts"),
+      formats: ["cjs"],
+    },
+    outDir: path.resolve(__dirname, "dist-electron/electron/preload"),
+    rollupOptions: {
+      external: ["electron"],
+      output: {
+        entryFileNames: "index.cjs",
+      },
+    },
+    sourcemap: true,
+    target: "node20",
   },
 });

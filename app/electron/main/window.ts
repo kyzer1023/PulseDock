@@ -12,7 +12,10 @@ function getRendererUrl(): string {
     return devServerUrl;
   }
 
-  return new URL("../../../dist/renderer/index.html", import.meta.url).toString();
+  return new URL(
+    "../../../dist/renderer/index.html",
+    import.meta.url,
+  ).toString();
 }
 
 function getWindowIconPath(): string {
@@ -24,7 +27,9 @@ function getWindowIconPath(): string {
 }
 
 export function createPopupWindow(): BrowserWindow {
-  const preloadPath = fileURLToPath(new URL("../preload/index.js", import.meta.url));
+  const preloadPath = fileURLToPath(
+    new URL("../preload/index.cjs", import.meta.url),
+  );
 
   const window = new BrowserWindow({
     width: POPUP_WIDTH,
@@ -44,7 +49,7 @@ export function createPopupWindow(): BrowserWindow {
       preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
   });
 

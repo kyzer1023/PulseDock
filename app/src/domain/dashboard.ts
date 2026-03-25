@@ -15,13 +15,25 @@ export interface UsageWindow {
   until: string;
 }
 
-export interface PlanMeter {
+export type SectionAvailability =
+  | "available"
+  | "stale"
+  | "unsupported"
+  | "manual-required";
+
+export interface QuotaMeter {
   id: string;
   label: string;
-  current: number;
-  limit: number;
-  unit: "percent" | "requests";
-  resetLabel: string;
+  kind: "percent" | "count" | "currency";
+  used: number;
+  limit: number | null;
+  displayMode?: "used" | "remaining";
+  currencyCode?: string;
+  unitLabel?: string;
+  resetAt: string | null;
+  periodSeconds: number | null;
+  availability: SectionAvailability;
+  sourceLabel: string | null;
 }
 
 export interface ProviderSnapshot {
@@ -44,7 +56,13 @@ export interface ProviderSnapshot {
   staleSince: string | null;
   provenance: string[];
   detailMessage: string | null;
-  planMeters: PlanMeter[];
+  quotaStatus: SectionAvailability;
+  quotaStatusMessage: string | null;
+  quotaLastRefreshedAt: string | null;
+  costStatus: SectionAvailability;
+  costStatusMessage: string | null;
+  costLastRefreshedAt: string | null;
+  quotaMeters: QuotaMeter[];
 }
 
 export interface DashboardSummary {

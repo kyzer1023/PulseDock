@@ -85,7 +85,7 @@ export function DashboardApp() {
 
       <FooterMeta
         lastRefreshedAt={snapshot?.lastRefreshedAt ?? null}
-        provenance={snapshot?.provenance ?? []}
+        providers={snapshot?.providers ?? []}
       />
     </main>
   );
