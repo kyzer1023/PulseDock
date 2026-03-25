@@ -1,5 +1,10 @@
 import type { ProviderSnapshot, QuotaMeter, SectionAvailability } from "../../domain/dashboard.js";
-import { getCursorAuthStateReadOnly } from "./cursor-auth.js";
+import { markMetersStale } from "../shared/quota-meters.js";
+import {
+  buildCursorSessionCookie,
+  getCursorAuthStateReadOnly,
+  getCursorUserIdFromSubject,
+} from "./cursor-auth.js";
 
 interface CursorUsageSummaryResponse {
   billingCycleStart?: string;
@@ -66,13 +71,6 @@ export type { CursorUsageSummaryResponse };
 
 const USAGE_SUMMARY_URL = "https://cursor.com/api/usage-summary";
 const LEGACY_USAGE_URL = "https://cursor.com/api/usage";
-
-function stalePreviousMeters(previous: QuotaMeter[]): QuotaMeter[] {
-  return previous.map((meter) => ({
-    ...meter,
-    availability: meter.availability === "available" ? "stale" : meter.availability,
-  }));
-}
 
 function parseDateStringToIso(value: string | undefined): string | null {
   if (!value) {
@@ -146,15 +144,6 @@ function getBillingPeriodSeconds(start: string | undefined, end: string | undefi
   }
 
   return Math.max(0, Math.round((endMs - startMs) / 1000));
-}
-
-function buildCursorSessionCookie(accessToken: string, subject: string): string {
-  const userId = subject.split("|").pop()?.trim();
-  if (!userId) {
-    throw new Error("Cursor local session is missing a usable subject identifier.");
-  }
-
-  return `WorkosCursorSessionToken=${encodeURIComponent(`${userId}::${accessToken}`)}`;
 }
 
 async function getJson<T>(url: string, cookieHeader: string): Promise<T> {
@@ -289,8 +278,10 @@ export async function fetchCursorQuota(
   }
 
   let cookieHeader: string;
+  let userId: string | null = null;
   try {
     cookieHeader = buildCursorSessionCookie(accessToken, subject);
+    userId = getCursorUserIdFromSubject(subject);
   } catch (error) {
     return {
       quotaStatus: "unsupported",
@@ -302,7 +293,6 @@ export async function fetchCursorQuota(
     };
   }
 
-  const userId = subject.split("|").pop()?.trim() || null;
   let usageSummary: CursorUsageSummaryResponse;
   let legacyMeter: QuotaMeter | null = null;
   try {
@@ -321,7 +311,7 @@ export async function fetchCursorQuota(
         quotaStatus: "stale",
         quotaStatusMessage: "Cursor live quota could not be refreshed. Showing last known values.",
         quotaLastRefreshedAt: previousSnapshot.quotaLastRefreshedAt,
-        quotaMeters: stalePreviousMeters(previousSnapshot.quotaMeters),
+        quotaMeters: markMetersStale(previousSnapshot.quotaMeters),
         warnings: [error instanceof Error ? error.message : "Cursor live quota refresh failed."],
         hasData: true,
       };

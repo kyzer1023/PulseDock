@@ -1,6 +1,9 @@
 import type { ProviderSnapshot, SectionAvailability } from "../../domain/dashboard.js";
 import { createRecentDateWindow } from "../shared/date-window.js";
-import { getCursorAccessTokenReadOnly } from "./cursor-auth.js";
+import {
+  buildCursorSessionCookie,
+  getCursorAuthStateReadOnly,
+} from "./cursor-auth.js";
 
 interface UsageRow {
   timestamp: string;
@@ -45,30 +48,52 @@ export interface CursorCostSnapshot {
   hasData: boolean;
 }
 
-function buildSessionToken(accessToken: string): { userId: string; sessionToken: string } {
-  const payloadPart = accessToken.split(".")[1];
-  if (!payloadPart) {
-    throw new Error("Cursor access token is invalid.");
-  }
+const CURSOR_COST_PROVENANCE = ["Cursor usage export"] as const;
 
-  const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
-  const paddingLength = (4 - (normalized.length % 4)) % 4;
-  const padded = normalized.padEnd(normalized.length + paddingLength, "=");
-  const payload = JSON.parse(Buffer.from(padded, "base64").toString("utf8")) as { sub?: string };
-  const subject = payload.sub;
-  if (!subject) {
-    throw new Error("Cursor access token is missing a subject.");
-  }
-
-  const parts = subject.split("|");
-  const userId = parts.length > 1 ? parts[1] : parts[0];
-  if (!userId) {
-    throw new Error("Cursor user id could not be derived.");
-  }
-
+function buildEmptyCursorCostSnapshot(
+  status: SectionAvailability,
+  statusMessage: string,
+  detailMessage: string,
+  costLastRefreshedAt: string | null,
+): CursorCostSnapshot {
   return {
-    userId,
-    sessionToken: `${userId}%3A%3A${accessToken}`,
+    inputTokens: 0,
+    cachedInputTokens: 0,
+    outputTokens: 0,
+    reasoningTokens: 0,
+    totalTokens: 0,
+    estimatedCost: 0,
+    topLabel: null,
+    topLabelType: "provider",
+    activityCount: 0,
+    warnings: [],
+    detailMessage,
+    provenance: [...CURSOR_COST_PROVENANCE],
+    costStatus: status,
+    costStatusMessage: statusMessage,
+    costLastRefreshedAt,
+    hasData: false,
+  };
+}
+
+function buildStaleCursorCostSnapshot(previousSnapshot: ProviderSnapshot): CursorCostSnapshot {
+  return {
+    inputTokens: previousSnapshot.inputTokens,
+    cachedInputTokens: previousSnapshot.cachedInputTokens,
+    outputTokens: previousSnapshot.outputTokens,
+    reasoningTokens: previousSnapshot.reasoningTokens,
+    totalTokens: previousSnapshot.totalTokens,
+    estimatedCost: previousSnapshot.estimatedCost,
+    topLabel: previousSnapshot.topLabel,
+    topLabelType: previousSnapshot.topLabelType,
+    activityCount: previousSnapshot.activityCount,
+    warnings: ["Cursor usage export refresh failed. Showing last known cost data."],
+    detailMessage: previousSnapshot.detailMessage,
+    provenance: [...CURSOR_COST_PROVENANCE],
+    costStatus: "stale",
+    costStatusMessage: "Cursor cost data could not be refreshed. Showing last known values.",
+    costLastRefreshedAt: previousSnapshot.costLastRefreshedAt,
+    hasData: true,
   };
 }
 
@@ -272,12 +297,11 @@ function summarizeRows(rows: UsageRow[]): {
 }
 
 async function downloadUsageCsv(range: { startDate: number; endDate: number }): Promise<string> {
-  const accessToken = getCursorAccessTokenReadOnly();
-  if (!accessToken) {
+  const authState = getCursorAuthStateReadOnly();
+  if (!authState.accessToken || !authState.subject) {
     throw new Error("Cursor access token is unavailable or expired.");
   }
 
-  const { sessionToken } = buildSessionToken(accessToken);
   const url = new URL("https://cursor.com/api/dashboard/export-usage-events-csv");
   url.search = new URLSearchParams({
     startDate: String(range.startDate),
@@ -287,7 +311,7 @@ async function downloadUsageCsv(range: { startDate: number; endDate: number }): 
 
   const response = await fetch(url, {
     headers: {
-      Cookie: `WorkosCursorSessionToken=${sessionToken}`,
+      Cookie: buildCursorSessionCookie(authState.accessToken, authState.subject),
       Accept: "text/csv",
     },
   });
@@ -347,44 +371,15 @@ export async function collectCursorCost(
     });
   } catch (error) {
     if (previousSnapshot && previousSnapshot.costStatus === "available") {
-      return {
-        inputTokens: previousSnapshot.inputTokens,
-        cachedInputTokens: previousSnapshot.cachedInputTokens,
-        outputTokens: previousSnapshot.outputTokens,
-        reasoningTokens: previousSnapshot.reasoningTokens,
-        totalTokens: previousSnapshot.totalTokens,
-        estimatedCost: previousSnapshot.estimatedCost,
-        topLabel: previousSnapshot.topLabel,
-        topLabelType: previousSnapshot.topLabelType,
-        activityCount: previousSnapshot.activityCount,
-        warnings: ["Cursor usage export refresh failed. Showing last known cost data."],
-        detailMessage: previousSnapshot.detailMessage,
-        provenance: ["Cursor usage export"],
-        costStatus: "stale",
-        costStatusMessage: "Cursor cost data could not be refreshed. Showing last known values.",
-        costLastRefreshedAt: previousSnapshot.costLastRefreshedAt,
-        hasData: true,
-      };
+      return buildStaleCursorCostSnapshot(previousSnapshot);
     }
 
-    return {
-      inputTokens: 0,
-      cachedInputTokens: 0,
-      outputTokens: 0,
-      reasoningTokens: 0,
-      totalTokens: 0,
-      estimatedCost: 0,
-      topLabel: null,
-      topLabelType: "provider",
-      activityCount: 0,
-      warnings: [],
-      detailMessage: error instanceof Error ? error.message : "Cursor cost data is unavailable.",
-      provenance: ["Cursor usage export"],
-      costStatus: "unsupported",
-      costStatusMessage: "Cursor token-cost export is unavailable.",
-      costLastRefreshedAt: previousSnapshot?.costLastRefreshedAt ?? null,
-      hasData: false,
-    };
+    return buildEmptyCursorCostSnapshot(
+      "unsupported",
+      "Cursor token-cost export is unavailable.",
+      error instanceof Error ? error.message : "Cursor cost data is unavailable.",
+      previousSnapshot?.costLastRefreshedAt ?? null,
+    );
   }
 
   const usageRows = parseUsageCsv(csvText, {
@@ -393,24 +388,12 @@ export async function collectCursorCost(
   }).filter(hasUsage);
 
   if (usageRows.length === 0) {
-    return {
-      inputTokens: 0,
-      cachedInputTokens: 0,
-      outputTokens: 0,
-      reasoningTokens: 0,
-      totalTokens: 0,
-      estimatedCost: 0,
-      topLabel: null,
-      topLabelType: "provider",
-      activityCount: 0,
-      warnings: [],
-      detailMessage: `No Cursor usage rows were found for ${window.usageWindow.label.toLowerCase()}.`,
-      provenance: ["Cursor usage export"],
-      costStatus: "unsupported",
-      costStatusMessage: "No recent Cursor token-cost data found.",
-      costLastRefreshedAt: now.toISOString(),
-      hasData: false,
-    };
+    return buildEmptyCursorCostSnapshot(
+      "unsupported",
+      "No recent Cursor token-cost data found.",
+      `No Cursor usage rows were found for ${window.usageWindow.label.toLowerCase()}.`,
+      now.toISOString(),
+    );
   }
 
   const { totals, activityCount, topProvider, topModel } = summarizeRows(usageRows);
@@ -431,7 +414,7 @@ export async function collectCursorCost(
     activityCount,
     warnings,
     detailMessage: null,
-    provenance: ["Cursor usage export"],
+    provenance: [...CURSOR_COST_PROVENANCE],
     costStatus: "available",
     costStatusMessage: null,
     costLastRefreshedAt: now.toISOString(),

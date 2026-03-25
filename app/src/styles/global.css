@@ -429,65 +429,70 @@ button {
 
 /* ── Plan meter bars ── */
 
-.quota-meters {
+.quota-meters,
+.usage-bars {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.quota-meter {
+.meter-bar {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.quota-meter__row {
+.meter-bar__row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   font-size: 13px;
 }
 
-.quota-meter__label {
+.meter-bar__label {
   color: var(--text-primary);
   font-weight: 600;
 }
 
-.quota-meter__value {
+.meter-bar__value {
   font-weight: 700;
   font-size: 13px;
 }
 
-.quota-meter__value--codex {
+.meter-bar__value--codex {
   color: var(--accent-codex);
 }
 
-.quota-meter__value--cursor {
+.meter-bar__value--cursor {
   color: var(--accent-cursor);
 }
 
-.quota-meter__track {
+.meter-bar__track {
   height: 6px;
   border-radius: 3px;
   background: var(--track-bg);
   overflow: hidden;
 }
 
-.quota-meter__fill {
+.meter-bar__fill {
   height: 100%;
   border-radius: 3px;
+  transition: width 300ms ease;
+}
+
+.meter-bar--quota .meter-bar__fill {
   transition: width 400ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.quota-meter__fill--codex {
+.meter-bar__fill--codex {
   background: var(--accent-codex);
 }
 
-.quota-meter__fill--cursor {
+.meter-bar__fill--cursor {
   background: var(--accent-cursor);
 }
 
-.quota-meter__meta {
+.meter-bar__meta {
   font-size: 10px;
   color: var(--text-tertiary);
 }
@@ -503,69 +508,6 @@ button {
 }
 
 /* ── Usage bars (token breakdown) ── */
-
-.usage-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.usage-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.usage-bar__row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-size: 13px;
-}
-
-.usage-bar__label {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.usage-bar__value {
-  font-weight: 700;
-  font-size: 13px;
-}
-
-.usage-bar__value--codex {
-  color: var(--accent-codex);
-}
-
-.usage-bar__value--cursor {
-  color: var(--accent-cursor);
-}
-
-.usage-bar__track {
-  height: 6px;
-  border-radius: 3px;
-  background: var(--track-bg);
-  overflow: hidden;
-}
-
-.usage-bar__fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 300ms ease;
-}
-
-.usage-bar__fill--codex {
-  background: var(--accent-codex);
-}
-
-.usage-bar__fill--cursor {
-  background: var(--accent-cursor);
-}
-
-.usage-bar__meta {
-  font-size: 10px;
-  color: var(--text-tertiary);
-}
 
 /* ── Detail card (cost/metrics) ── */
 

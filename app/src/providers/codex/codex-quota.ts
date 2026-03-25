@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { ProviderSnapshot, QuotaMeter, SectionAvailability } from "../../domain/dashboard.js";
+import { markMetersStale } from "../shared/quota-meters.js";
 
 interface CodexAuthFile {
   tokens?: {
@@ -117,13 +118,6 @@ function makeAdditionalLabel(value: string | undefined, fallback: string): strin
     .trim();
 }
 
-function stalePreviousMeters(previous: QuotaMeter[]): QuotaMeter[] {
-  return previous.map((meter) => ({
-    ...meter,
-    availability: meter.availability === "available" ? "stale" : meter.availability,
-  }));
-}
-
 export function mapCodexQuotaPayload(
   payload: CodexUsageResponse,
   now: Date,
@@ -169,7 +163,7 @@ export function mapCodexQuotaPayload(
       quotaStatus: previousSnapshot?.quotaMeters.length ? "stale" : "unsupported",
       quotaStatusMessage: "Codex live quota did not expose any supported meter windows.",
       quotaLastRefreshedAt: previousSnapshot?.quotaLastRefreshedAt ?? null,
-      quotaMeters: previousSnapshot?.quotaMeters.length ? stalePreviousMeters(previousSnapshot.quotaMeters) : [],
+      quotaMeters: previousSnapshot?.quotaMeters.length ? markMetersStale(previousSnapshot.quotaMeters) : [],
       warnings: [],
       hasData: Boolean(previousSnapshot?.quotaMeters.length),
     };
@@ -220,7 +214,7 @@ export async function fetchCodexQuota(
         quotaStatus: "stale",
         quotaStatusMessage: "Codex live quota could not be refreshed. Showing last known values.",
         quotaLastRefreshedAt: previousSnapshot.quotaLastRefreshedAt,
-        quotaMeters: stalePreviousMeters(previousSnapshot.quotaMeters),
+        quotaMeters: markMetersStale(previousSnapshot.quotaMeters),
         warnings: ["Codex live quota refresh failed."],
         hasData: true,
       };
@@ -242,7 +236,7 @@ export async function fetchCodexQuota(
         quotaStatus: "stale",
         quotaStatusMessage: "Codex live quota could not be refreshed. Showing last known values.",
         quotaLastRefreshedAt: previousSnapshot.quotaLastRefreshedAt,
-        quotaMeters: stalePreviousMeters(previousSnapshot.quotaMeters),
+        quotaMeters: markMetersStale(previousSnapshot.quotaMeters),
         warnings: [`Codex live quota request failed with HTTP ${response.status}.`],
         hasData: true,
       };
@@ -266,7 +260,7 @@ export async function fetchCodexQuota(
       quotaStatus: previousSnapshot?.quotaMeters.length ? "stale" : "unsupported",
       quotaStatusMessage: "Codex live quota returned an invalid response.",
       quotaLastRefreshedAt: previousSnapshot?.quotaLastRefreshedAt ?? null,
-      quotaMeters: previousSnapshot?.quotaMeters.length ? stalePreviousMeters(previousSnapshot.quotaMeters) : [],
+      quotaMeters: previousSnapshot?.quotaMeters.length ? markMetersStale(previousSnapshot.quotaMeters) : [],
       warnings: ["Codex live quota response could not be parsed."],
       hasData: Boolean(previousSnapshot?.quotaMeters.length),
     };

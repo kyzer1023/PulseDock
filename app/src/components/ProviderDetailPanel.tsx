@@ -6,8 +6,8 @@ import {
 } from "@renderer/lib/formatters";
 import chatgptIcon from "@renderer/assets/chatgpt.png";
 import cursorIcon from "@renderer/assets/cursor.png";
-import { QuotaMeterBar } from "./QuotaMeterBar";
-import { UsageBar } from "./UsageBar";
+import { formatQuotaMeterMeta, formatQuotaMeterValue, getQuotaMeterPercent } from "@domain/quota";
+import { MeterBar } from "./MeterBar";
 
 interface ProviderDetailPanelProps {
   provider: ProviderSnapshot;
@@ -97,7 +97,15 @@ export function ProviderDetailPanel({
           <div className="provider-detail__section-label">Quota</div>
           <div className="quota-meters">
             {provider.quotaMeters.map((meter) => (
-              <QuotaMeterBar accent={accent} key={meter.id} meter={meter} />
+              <MeterBar
+                accent={accent}
+                key={meter.id}
+                label={meter.label}
+                meta={formatQuotaMeterMeta(meter)}
+                percent={getQuotaMeterPercent(meter)}
+                value={formatQuotaMeterValue(meter)}
+                variant="quota"
+              />
             ))}
           </div>
           {provider.quotaMeters.length === 0 && provider.quotaStatusMessage ? (
@@ -112,12 +120,13 @@ export function ProviderDetailPanel({
             <div className="provider-detail__section-label">Usage</div>
             <div className="usage-bars">
               {usageBreakdown.map((item) => (
-                <UsageBar
+                <MeterBar
                   accent={accent}
                   key={item.key}
                   label={item.label}
+                  meta={item.sublabel}
+                  minPercent={1}
                   percent={item.percent}
-                  sublabel={item.sublabel}
                   value={item.value}
                 />
               ))}

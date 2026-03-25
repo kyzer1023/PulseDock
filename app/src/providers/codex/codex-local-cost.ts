@@ -56,6 +56,7 @@ export interface CodexLocalCostSnapshot {
 }
 
 const DEFAULT_FALLBACK_MODEL = "gpt-5-codex";
+const CODEX_LOCAL_PROVENANCE = "Codex local sessions";
 
 const PRICING: Record<string, ModelPricing> = {
   "gpt-5": { inputPerMillionUsd: 1.25, cachedInputPerMillionUsd: 0.125, outputPerMillionUsd: 10 },
@@ -81,6 +82,37 @@ const EXACT_MODEL_MAP = new Map<string, string>([
   ["gpt-5.4", "gpt-5.4"],
   ["codex-mini-latest", "codex-mini-latest"],
 ]);
+
+function getCodexLocalProvenance(): string[] {
+  return [process.env.CODEX_HOME ? `${CODEX_LOCAL_PROVENANCE} (custom CODEX_HOME)` : CODEX_LOCAL_PROVENANCE];
+}
+
+function buildEmptyCodexCostSnapshot(options: {
+  costLastRefreshedAt: string | null;
+  detailMessage: string;
+  hasWarnings?: boolean;
+  statusMessage: string;
+  warnings: string[];
+}): CodexLocalCostSnapshot {
+  return {
+    inputTokens: 0,
+    cachedInputTokens: 0,
+    outputTokens: 0,
+    reasoningTokens: 0,
+    totalTokens: 0,
+    estimatedCost: 0,
+    topLabel: null,
+    topLabelType: "model",
+    activityCount: 0,
+    warnings: options.warnings,
+    detailMessage: options.detailMessage,
+    provenance: getCodexLocalProvenance(),
+    costStatus: options.hasWarnings ? "stale" : "unsupported",
+    costStatusMessage: options.statusMessage,
+    costLastRefreshedAt: options.costLastRefreshedAt,
+    hasData: false,
+  };
+}
 
 function resolveDefaultTimezone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -494,24 +526,12 @@ export async function collectCodexLocalCost(
   const discovery = await discoverRolloutFiles(codexHome);
 
   if (discovery.files.length === 0) {
-    return {
-      inputTokens: 0,
-      cachedInputTokens: 0,
-      outputTokens: 0,
-      reasoningTokens: 0,
-      totalTokens: 0,
-      estimatedCost: 0,
-      topLabel: null,
-      topLabelType: "model",
-      activityCount: 0,
+    return buildEmptyCodexCostSnapshot({
       warnings: mapCodexWarnings(discovery.warnings),
       detailMessage: "No Codex session data was found under the local Codex home.",
-      provenance: ["Codex local sessions"],
-      costStatus: "unsupported",
-      costStatusMessage: "Local Codex session data is unavailable.",
+      statusMessage: "Local Codex session data is unavailable.",
       costLastRefreshedAt: previousSnapshot?.costLastRefreshedAt ?? null,
-      hasData: false,
-    };
+    });
   }
 
   const scanned: Array<Awaited<ReturnType<typeof scanSessionFile>>> = [];
@@ -543,24 +563,13 @@ export async function collectCodexLocalCost(
       ]),
     );
 
-    return {
-      inputTokens: 0,
-      cachedInputTokens: 0,
-      outputTokens: 0,
-      reasoningTokens: 0,
-      totalTokens: 0,
-      estimatedCost: 0,
-      topLabel: null,
-      topLabelType: "model",
-      activityCount: 0,
+    return buildEmptyCodexCostSnapshot({
       warnings,
       detailMessage: `No measurable Codex activity was found for ${window.usageWindow.label.toLowerCase()}.`,
-      provenance: ["Codex local sessions"],
-      costStatus: warnings.length > 0 ? "stale" : "unsupported",
-      costStatusMessage: warnings.length > 0 ? "Codex local cost data is incomplete." : "No recent Codex cost data found.",
+      hasWarnings: warnings.length > 0,
+      statusMessage: warnings.length > 0 ? "Codex local cost data is incomplete." : "No recent Codex cost data found.",
       costLastRefreshedAt: previousSnapshot?.costLastRefreshedAt ?? now.toISOString(),
-      hasData: false,
-    };
+    });
   }
 
   const totals = summarizeEvents(recentEvents);
@@ -600,9 +609,7 @@ export async function collectCodexLocalCost(
     activityCount: sessionsInRange.length,
     warnings,
     detailMessage: null,
-    provenance: [
-      process.env.CODEX_HOME ? "Codex local sessions (custom CODEX_HOME)" : "Codex local sessions",
-    ],
+    provenance: getCodexLocalProvenance(),
     costStatus: "available",
     costStatusMessage: null,
     costLastRefreshedAt: now.toISOString(),

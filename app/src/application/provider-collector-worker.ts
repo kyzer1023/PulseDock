@@ -1,29 +1,12 @@
 import { parentPort } from "node:worker_threads";
 import type { ProviderContext, ProviderSnapshot } from "../domain/dashboard.js";
 import { providers } from "../providers/index.js";
-
-interface CollectRequest {
-  id: number;
-  nowIso: string;
-  previousSnapshots: ProviderSnapshot[];
-}
-
-interface ProviderCollectSuccess {
-  id: string;
-  ok: true;
-  snapshot: ProviderSnapshot;
-}
-
-interface ProviderCollectFailure {
-  id: string;
-  ok: false;
-  errorMessage: string;
-}
-
-interface CollectResponse {
-  id: number;
-  results: Array<ProviderCollectSuccess | ProviderCollectFailure>;
-}
+import type {
+  CollectRequest,
+  CollectResponse,
+  ProviderCollectFailure,
+  ProviderCollectSuccess,
+} from "./provider-collector-contract.js";
 
 async function handleCollect(
   request: CollectRequest,

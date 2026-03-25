@@ -1,30 +1,10 @@
 import { Worker } from "node:worker_threads";
 import type { ProviderSnapshot } from "../domain/dashboard.js";
-
-interface CollectRequest {
-  id: number;
-  nowIso: string;
-  previousSnapshots: ProviderSnapshot[];
-}
-
-interface ProviderCollectSuccess {
-  id: string;
-  ok: true;
-  snapshot: ProviderSnapshot;
-}
-
-interface ProviderCollectFailure {
-  id: string;
-  ok: false;
-  errorMessage: string;
-}
-
-type ProviderCollectResult = ProviderCollectSuccess | ProviderCollectFailure;
-
-interface CollectResponse {
-  id: number;
-  results: ProviderCollectResult[];
-}
+import type {
+  CollectRequest,
+  CollectResponse,
+  ProviderCollectResult,
+} from "./provider-collector-contract.js";
 
 export class ProviderCollector {
   private readonly worker: Worker;

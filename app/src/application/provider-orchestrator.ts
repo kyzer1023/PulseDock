@@ -55,7 +55,6 @@ function uniqueValues(values: string[]): string[] {
 function buildNotices(providers: ProviderSnapshot[]): DashboardNotice[] {
   const errors = providers.filter((provider) => provider.status === "error");
   const stale = providers.filter((provider) => provider.status === "stale");
-  const warnings = providers.filter((provider) => provider.status === "warning");
   const notices: DashboardNotice[] = [];
 
   if (errors.length > 0) {

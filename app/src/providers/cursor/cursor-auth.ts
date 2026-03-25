@@ -84,15 +84,25 @@ function isTokenUsable(accessToken: string, nowMs = Date.now()): boolean {
   return expiresAt > nowMs;
 }
 
-export function getCursorAccessTokenReadOnly(): string | null {
-  return getCursorAuthStateReadOnly().accessToken;
-}
-
 export interface CursorAuthState {
   accessToken: string | null;
   subject: string | null;
   membershipType: string | null;
   subscriptionStatus: string | null;
+}
+
+export function getCursorUserIdFromSubject(subject: string): string {
+  const userId = subject.split("|").pop()?.trim();
+  if (!userId) {
+    throw new Error("Cursor local session is missing a usable subject identifier.");
+  }
+
+  return userId;
+}
+
+export function buildCursorSessionCookie(accessToken: string, subject: string): string {
+  const userId = getCursorUserIdFromSubject(subject);
+  return `WorkosCursorSessionToken=${encodeURIComponent(`${userId}::${accessToken}`)}`;
 }
 
 export function getCursorAuthStateReadOnly(): CursorAuthState {
