@@ -3,6 +3,7 @@ import type { ProviderId } from "@domain/dashboard";
 import { EmptyStatePanel } from "@renderer/components/EmptyStatePanel";
 import { ErrorStatePanel } from "@renderer/components/ErrorStatePanel";
 import { FooterMeta } from "@renderer/components/FooterMeta";
+import { LoadingCard } from "@renderer/components/LoadingCard";
 import { PopupHeader } from "@renderer/components/PopupHeader";
 import { ProviderDetailPanel } from "@renderer/components/ProviderDetailPanel";
 import { ProviderTabs } from "@renderer/components/ProviderTabs";
@@ -64,19 +65,7 @@ export function DashboardApp() {
           ) : null}
         </>
       ) : isLoading ? (
-        <div className="detail-loading">
-          <div className="detail-loading__header">
-            <div className="skeleton detail-loading__icon" />
-            <div className="skeleton detail-loading__title" />
-          </div>
-          <div className="skeleton detail-loading__bar" />
-          <div className="skeleton detail-loading__bar" />
-          <div className="skeleton detail-loading__bar" />
-          <div className="detail-loading__row">
-            <div className="skeleton detail-loading__cell" />
-            <div className="skeleton detail-loading__cell" />
-          </div>
-        </div>
+        <LoadingCard />
       ) : (
         <EmptyStatePanel />
       )}

@@ -1,14 +1,25 @@
 import { useEffect, useState } from "react";
 import type { DashboardSnapshot } from "@domain/dashboard";
 
+const BRIDGE_ERROR_MESSAGE = "PulseDock desktop bridge failed to load. Restart the app.";
+
 export function useDashboard() {
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
   const [bridgeError, setBridgeError] = useState<string | null>(null);
 
-  useEffect(() => {
+  function getBridge() {
     const bridge = window.pulsedock;
     if (!bridge) {
-      setBridgeError("PulseDock desktop bridge failed to load. Restart the app.");
+      setBridgeError(BRIDGE_ERROR_MESSAGE);
+      return null;
+    }
+
+    return bridge;
+  }
+
+  useEffect(() => {
+    const bridge = getBridge();
+    if (!bridge) {
       return;
     }
 
@@ -47,9 +58,8 @@ export function useDashboard() {
   }, []);
 
   async function refresh(): Promise<void> {
-    const bridge = window.pulsedock;
+    const bridge = getBridge();
     if (!bridge) {
-      setBridgeError("PulseDock desktop bridge failed to load. Restart the app.");
       return;
     }
 
@@ -63,9 +73,8 @@ export function useDashboard() {
   }
 
   async function openExternal(url: string): Promise<void> {
-    const bridge = window.pulsedock;
+    const bridge = getBridge();
     if (!bridge) {
-      setBridgeError("PulseDock desktop bridge failed to load. Restart the app.");
       return;
     }
 
@@ -73,9 +82,8 @@ export function useDashboard() {
   }
 
   async function quitApp(): Promise<void> {
-    const bridge = window.pulsedock;
+    const bridge = getBridge();
     if (!bridge) {
-      setBridgeError("PulseDock desktop bridge failed to load. Restart the app.");
       return;
     }
 
