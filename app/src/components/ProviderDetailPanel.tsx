@@ -37,14 +37,14 @@ function getUsageBreakdown(provider: ProviderSnapshot) {
       },
       {
         key: "cache-write",
-        label: "Cache write",
+        label: "Cache Write",
         value: formatTokens(cacheWrite),
         sublabel: `${Math.round((cacheWrite / total) * 100)}% of total tokens`,
         percent: (cacheWrite / total) * 100,
       },
       {
         key: "cache-read",
-        label: "Cache read",
+        label: "Cache Read",
         value: formatTokens(cacheRead),
         sublabel: `${Math.round((cacheRead / total) * 100)}% of total tokens`,
         percent: (cacheRead / total) * 100,
