@@ -76,25 +76,38 @@ export async function maybeRunSmokeProbe(): Promise<void> {
     return;
   }
 
-  const smokeMode = await invoke<boolean>("is_smoke_mode");
-  if (!smokeMode) {
-    return;
-  }
+  try {
+    const smokeMode = await invoke<boolean>("is_smoke_mode");
+    if (!smokeMode) {
+      return;
+    }
 
-  const bridge = installTauriBridge();
-  if (!bridge) {
-    throw new Error("PulseDock bridge missing in smoke mode.");
-  }
-  const bodyText = await waitForDashboardRender();
+    const bridge = installTauriBridge();
+    if (!bridge) {
+      throw new Error("PulseDock bridge missing in smoke mode.");
+    }
+    const bodyText = await waitForDashboardRender();
 
-  await invoke("write_smoke_result", {
-    payload: {
-      keys: Object.keys(bridge).sort(),
-      bodyText,
-      initial: await bridge.getDashboard(),
-      refreshed: await bridge.refreshDashboard(),
-    },
-  });
+    await invoke("write_smoke_result", {
+      payload: {
+        ok: true,
+        keys: Object.keys(bridge).sort(),
+        bodyText,
+        initial: await bridge.getDashboard(),
+        refreshed: await bridge.refreshDashboard(),
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.stack ?? error.message : String(error);
+    await invoke("write_smoke_result", {
+      payload: {
+        ok: false,
+        error: message,
+      },
+    }).catch(() => undefined);
+
+    throw error;
+  }
 }
 
 export function hideWindowOnBlur(): void {

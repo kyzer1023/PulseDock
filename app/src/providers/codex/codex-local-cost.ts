@@ -137,6 +137,50 @@ function resolveDefaultTimezone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
+const localDateKeyFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
+function getLocalDateKeyFormatter(timezone: string): Intl.DateTimeFormat {
+  const cached = localDateKeyFormatterCache.get(timezone);
+  if (cached) {
+    return cached;
+  }
+
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  localDateKeyFormatterCache.set(timezone, formatter);
+  return formatter;
+}
+
+export function formatCodexLocalDateKey(timestamp: string, timezone: string): string {
+  const formatter = getLocalDateKeyFormatter(timezone);
+  const parts = formatter.formatToParts(new Date(timestamp));
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  if (year && month && day) {
+    return `${year}-${month}-${day}`;
+  }
+
+  const formatted = formatter.format(new Date(timestamp));
+  const numericParts = formatted.match(/\d+/g);
+  if (numericParts && numericParts.length >= 3) {
+    const [first, second, third] = numericParts;
+    if (first && second && third) {
+      const yearPart = [first, second, third].find((value) => value.length === 4) ?? third;
+      const monthPart = yearPart === first ? second : first;
+      const dayPart = yearPart === third ? second : third;
+      return `${yearPart}-${monthPart.padStart(2, "0")}-${dayPart.padStart(2, "0")}`;
+    }
+  }
+
+  return new Date(timestamp).toISOString().slice(0, 10);
+}
+
 function localDateKeyToLocalDate(dateKey: string): Date {
   return new Date(
     Number.parseInt(dateKey.slice(0, 4), 10),
@@ -146,12 +190,7 @@ function localDateKeyToLocalDate(dateKey: string): Date {
 }
 
 function toLocalDateKey(timestamp: string, timezone: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(timestamp));
+  return formatCodexLocalDateKey(timestamp, timezone);
 }
 
 function normalizePathSegments(targetPath: string): string {

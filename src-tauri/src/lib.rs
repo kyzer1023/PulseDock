@@ -10,10 +10,11 @@ use models::{DashboardSnapshot, LoadingState, UsageRangePresetId};
 use orchestrator::{DASHBOARD_CHANGED_EVENT, ProviderOrchestrator};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, State, WebviewWindow, WindowEvent};
 use tauri_plugin_opener::OpenerExt;
-use tauri_plugin_positioner::{Position, WindowExt};
 use tokio::sync::Mutex;
+
+const WINDOW_MARGIN: i32 = 10;
 
 struct AppState {
   smoke_mode: bool,
@@ -138,11 +139,30 @@ fn show_main_window(app: &AppHandle) -> Result<(), String> {
     return Err("PulseDock main window was not found.".to_string());
   };
 
-  let _ = window.as_ref().window().move_window(Position::BottomRight);
+  position_main_window(app, &window)?;
   let _ = window.unminimize();
   window.show().map_err(|error| error.to_string())?;
   window.set_focus().map_err(|error| error.to_string())?;
   Ok(())
+}
+
+fn position_main_window(app: &AppHandle, window: &WebviewWindow) -> Result<(), String> {
+  let cursor_position = app.cursor_position().map_err(|error| error.to_string())?;
+  let monitor = app
+    .monitor_from_point(cursor_position.x, cursor_position.y)
+    .map_err(|error| error.to_string())?
+    .or_else(|| window.current_monitor().ok().flatten())
+    .or_else(|| app.primary_monitor().ok().flatten())
+    .ok_or_else(|| "Unable to resolve a display for PulseDock.".to_string())?;
+
+  let work_area = monitor.work_area();
+  let window_size = window.outer_size().map_err(|error| error.to_string())?;
+  let x = work_area.position.x + work_area.size.width as i32 - window_size.width as i32 - WINDOW_MARGIN;
+  let y = work_area.position.y + work_area.size.height as i32 - window_size.height as i32 - WINDOW_MARGIN;
+
+  window
+    .set_position(PhysicalPosition::new(x, y))
+    .map_err(|error| error.to_string())
 }
 
 fn hide_main_window_inner(app: &AppHandle) -> Result<(), String> {

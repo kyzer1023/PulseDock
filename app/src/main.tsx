@@ -23,4 +23,4 @@ createRoot(container).render(
   </StrictMode>,
 );
 
-void maybeRunSmokeProbe();
+void maybeRunSmokeProbe().catch(() => undefined);

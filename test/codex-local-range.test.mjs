@@ -6,6 +6,7 @@ import path from "node:path";
 
 import {
   collectCodexLocalCost,
+  formatCodexLocalDateKey,
   resetCodexLocalCostCacheForTests,
 } from "../dist-backend/providers/codex/codex-local-cost.js";
 
@@ -96,5 +97,48 @@ test("slices Codex local usage into today, week, month, and all time", async () 
     }
     resetCodexLocalCostCacheForTests();
     await fs.rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("formats Codex local date keys without depending on locale-formatted output", () => {
+  const RealDateTimeFormat = Intl.DateTimeFormat;
+
+  class MockDateTimeFormat {
+    constructor(locales, options = {}) {
+      this.delegate = new RealDateTimeFormat(locales, options);
+      this.options = options;
+    }
+
+    resolvedOptions() {
+      return {
+        ...this.delegate.resolvedOptions(),
+        timeZone: this.options.timeZone ?? "UTC",
+      };
+    }
+
+    format(date) {
+      return "3/26/2026";
+    }
+
+    formatToParts(date) {
+      return [
+        { type: "month", value: "03" },
+        { type: "literal", value: "/" },
+        { type: "day", value: "26" },
+        { type: "literal", value: "/" },
+        { type: "year", value: "2026" },
+      ];
+    }
+  }
+
+  Intl.DateTimeFormat = MockDateTimeFormat;
+
+  try {
+    assert.equal(
+      formatCodexLocalDateKey("2026-03-26T14:52:31.172Z", "Asia/Kuala_Lumpur"),
+      "2026-03-26",
+    );
+  } finally {
+    Intl.DateTimeFormat = RealDateTimeFormat;
   }
 });
