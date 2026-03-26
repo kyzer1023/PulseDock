@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ProviderOrchestrator } from "../dist-electron/src/application/provider-orchestrator.js";
+import { ProviderOrchestrator } from "../dist-backend/application/provider-orchestrator.js";
 
 function makeSnapshot(overrides = {}) {
   return {

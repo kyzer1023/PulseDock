@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { getCursorRowTokenBreakdown } from "../dist-electron/src/providers/cursor/cursor-cost.js";
-import { mapCodexWarnings } from "../dist-electron/src/providers/shared/warning-text.js";
+import { getCursorRowTokenBreakdown } from "../dist-backend/providers/cursor/cursor-cost.js";
+import { mapCodexWarnings } from "../dist-backend/providers/shared/warning-text.js";
 
 test("counts Cursor cache reads inside inputTokens so usage meters sum correctly", () => {
   const breakdown = getCursorRowTokenBreakdown({

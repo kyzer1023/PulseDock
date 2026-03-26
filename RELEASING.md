@@ -1,6 +1,6 @@
 # Releasing PulseDock
 
-This repo ships PulseDock as a Windows-only GitHub Release with a manually downloaded NSIS installer.
+This repo ships PulseDock as a Windows-only GitHub Release with a Tauri-built NSIS installer.
 
 ## Release Checklist
 
@@ -19,10 +19,9 @@ This repo ships PulseDock as a Windows-only GitHub Release with a manually downl
    npm run dist
    ```
 
-4. Verify the generated artifacts in `release/`:
-   - `PulseDock-Setup-<version>.exe`
-   - `latest.yml`
-   - `win-unpacked/`
+4. Verify the generated artifacts under `src-tauri/target/<target>/release/`:
+   - `pulsedock.exe`
+   - `bundle/nsis/PulseDock_<version>_x64-setup.exe`
 
 5. Perform manual Windows QA on the installer:
    - fresh install succeeds and shows the tray icon
@@ -40,13 +39,14 @@ This repo ships PulseDock as a Windows-only GitHub Release with a manually downl
    git push origin v<version>
    ```
 
-7. Create a GitHub Release for that tag and upload `PulseDock-Setup-<version>.exe`.
+7. Create a GitHub Release for that tag and upload `PulseDock_<version>_x64-setup.exe`.
 8. Write the release notes directly in GitHub and keep the SmartScreen warning in the notes.
 
 ## Release Notes Requirements
 
 - state that the build is Windows only
 - explain that updates are manual reinstall for v1
+- mention that the desktop shell now uses Tauri with a packaged collector sidecar
 - call out that the installer is unsigned and SmartScreen may warn
 - summarize what changed in the release
 - link the repository issues page for bug reports

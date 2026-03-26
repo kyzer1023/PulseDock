@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { assertAllowedExternalUrl } from "../dist-electron/src/domain/external-url.js";
+import { assertAllowedExternalUrl } from "../dist-backend/domain/external-url.js";
 
 test("allows only known https dashboard hosts", () => {
   assert.equal(

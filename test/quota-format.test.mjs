@@ -5,7 +5,7 @@ import {
   formatQuotaMeterMeta,
   formatQuotaMeterValue,
   getQuotaMeterPercent,
-} from "../dist-electron/src/domain/quota.js";
+} from "../dist-backend/domain/quota.js";
 
 test("formats percent quota values and clamps percent", () => {
   const meter = {

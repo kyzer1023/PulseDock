@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createUsageDateWindow } from "../dist-electron/src/providers/shared/date-window.js";
+import { createUsageDateWindow } from "../dist-backend/providers/shared/date-window.js";
 
 test("builds trailing local windows for today, week, month, and all time", () => {
   const now = new Date(2026, 2, 25, 18, 30, 0, 0);

@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { mapCodexQuotaPayload } from "../dist-electron/src/providers/codex/codex-quota.js";
-import { mapCursorCurrentPlanQuota } from "../dist-electron/src/providers/cursor/cursor-quota.js";
+import { mapCodexQuotaPayload } from "../dist-backend/providers/codex/codex-quota.js";
+import { mapCursorCurrentPlanQuota } from "../dist-backend/providers/cursor/cursor-quota.js";
 
 test("maps Codex live quota payload into primary, weekly, and review meters", () => {
   const now = new Date("2026-03-25T00:00:00.000Z");

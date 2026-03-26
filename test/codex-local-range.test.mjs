@@ -7,7 +7,7 @@ import path from "node:path";
 import {
   collectCodexLocalCost,
   resetCodexLocalCostCacheForTests,
-} from "../dist-electron/src/providers/codex/codex-local-cost.js";
+} from "../dist-backend/providers/codex/codex-local-cost.js";
 
 function makeEventLine(timestamp, usage, source = "cli") {
   return [

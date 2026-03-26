@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { getCursorCacheDisposition } from "../dist-electron/src/providers/cursor/cursor-cost.js";
+import { getCursorCacheDisposition } from "../dist-backend/providers/cursor/cursor-cost.js";
 
 test("reuses wider cached Cursor ranges and widens on demand", () => {
   assert.deepEqual(getCursorCacheDisposition("week", "today", false), {

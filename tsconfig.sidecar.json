@@ -6,17 +6,15 @@
     ],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "outDir": "dist-electron",
-    "rootDir": "app",
-    "sourceMap": true,
     "types": [
       "node"
-    ]
+    ],
+    "noEmit": true
   },
   "include": [
-    "app/electron/main",
     "app/src/application",
     "app/src/domain",
-    "app/src/providers"
+    "app/src/providers",
+    "sidecar/**/*.ts"
   ]
 }
