@@ -7,31 +7,49 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const unpackedDir = path.join(appRoot, "release-smoke", "win-unpacked");
+const candidateExePaths = [
+  path.join(appRoot, "src-tauri", "target", "release", "pulsedock.exe"),
+  path.join(appRoot, "src-tauri", "target", "x86_64-pc-windows-gnullvm", "release", "pulsedock.exe"),
+];
 
-async function resolvePackagedExe() {
-  const entries = await fs.readdir(unpackedDir, { withFileTypes: true });
-  const match = entries.find((entry) =>
-    entry.isFile() &&
-    entry.name.endsWith(".exe") &&
-    !entry.name.toLowerCase().includes("uninstall")
-  );
+async function collectFiles(rootDir) {
+  const entries = await fs.readdir(rootDir, { withFileTypes: true });
+  const nested = await Promise.all(entries.map(async (entry) => {
+    const fullPath = path.join(rootDir, entry.name);
+    if (entry.isDirectory()) {
+      return collectFiles(fullPath);
+    }
+    return [fullPath];
+  }));
 
-  if (!match) {
-    throw new Error(`No packaged executable found under ${unpackedDir}`);
-  }
-
-  return path.join(unpackedDir, match.name);
+  return nested.flat();
 }
 
-test("packaged app loads the sandboxed preload bridge from the final artifact", {
+async function resolvePackagedExe() {
+  for (const candidatePath of candidateExePaths) {
+    try {
+      await fs.access(candidatePath);
+      return candidatePath;
+    } catch {
+      continue;
+    }
+  }
+
+  throw new Error(`No packaged executable found. Checked: ${candidateExePaths.join(", ")}`);
+}
+
+test("packaged app loads the Tauri bridge from the final artifact", {
   skip: process.platform !== "win32",
 }, async () => {
-  const exePath = await resolvePackagedExe();
+  const packagedExe = await resolvePackagedExe();
+  const packagedFiles = await collectFiles(path.dirname(packagedExe));
+  const sidecars = packagedFiles.filter((filePath) => /pulsedock-collector.*\.exe$/i.test(path.basename(filePath)));
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pulsedock-packaged-smoke-"));
   const outputPath = path.join(tempDir, "bridge-result.json");
 
-  const child = spawn(exePath, [], {
+  assert.deepEqual(sidecars, []);
+
+  const child = spawn(packagedExe, [], {
     cwd: appRoot,
     env: {
       ...process.env,

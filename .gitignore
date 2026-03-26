@@ -1,7 +1,13 @@
 node_modules
 dist
 dist-electron
+dist-backend
 release
 release-smoke
 *.log
 codexbar-win-reference
+sidecar/dist
+src-tauri/target
+src-tauri/binaries
+src-tauri/gen
+tools

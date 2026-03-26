@@ -16,7 +16,6 @@
   },
   "include": [
     "app/src",
-    "vite.config.ts",
-    "vite.preload.config.ts"
+    "vite.config.ts"
   ]
 }

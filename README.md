@@ -8,27 +8,28 @@ PulseDock is a Windows tray app for monitoring local AI coding usage from Codex 
 - combined cost and token summary
 - provider-specific detail panels for Codex and Cursor
 - local-data-first collection with no CLI bridge requirement
-- packaged Windows installer built with Electron
+- packaged Windows installer built with Tauri
 
 ## Install
 
 PulseDock is distributed through [GitHub Releases](https://github.com/kyzer1023/PulseDock/releases).
 
-1. Download `PulseDock-Setup-<version>.exe` from the latest release.
+1. Download `PulseDock_<version>_x64-setup.exe` from the latest release.
 2. Run the installer.
 3. Launch PulseDock from the Start menu or installed shortcut.
 
 The installer is unsigned. Windows SmartScreen may warn before launch. Use `More info` and then `Run anyway` if you trust the release source.
+PulseDock uses Tauri's WebView2-based Windows shell. Modern Windows installs usually already include WebView2; the installer will bootstrap it if needed.
 
 Updates are manual for v1. Reinstall with the latest release when a new version is published.
 
 ## Stack
 
-- Electron
+- Tauri
+- Rust
 - React
 - TypeScript
 - Vite
-- electron-builder
 
 ## Development
 
@@ -43,6 +44,8 @@ Run the app in development mode:
 ```powershell
 npm run dev
 ```
+
+If you do not have Visual Studio C++ build tools available, place an `llvm-mingw` x64 toolchain under `tools/` and the repo will fall back to the `gnullvm` target automatically.
 
 Validate the project:
 
@@ -64,15 +67,15 @@ Build the Windows installer:
 npm run dist
 ```
 
-Artifacts are written to `release/`.
+Artifacts are written under `src-tauri/target/<target>/release/`.
 
 ## Notes
 
-PulseDock uses a small Electron architecture:
+PulseDock uses a small Tauri architecture:
 
-- the main process runs provider collectors for Codex and Cursor
-- those collectors read local session, auth, and usage-export files directly from disk
-- a sandboxed preload script exposes a narrow IPC bridge to the renderer
+- the Tauri backend owns collection, caching, refresh orchestration, and external-link controls
+- in-process Rust collectors read local Codex and Cursor state directly
+- the backend emits dashboard updates into the renderer bridge
 - the React tray UI renders the aggregated dashboard snapshot returned by that bridge
 
-This keeps the app local-first and avoids depending on an external CLI process just to populate the tray popup.
+This keeps the app local-first and avoids shipping a second runtime just to populate the tray popup.

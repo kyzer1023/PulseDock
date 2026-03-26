@@ -42,11 +42,13 @@ export function DashboardApp() {
   const selectedUsageRange = snapshot?.selectedUsageRange ?? DEFAULT_USAGE_RANGE_PRESET_ID;
   const isChangingUsageRange = snapshot?.loadingState === "switching";
   const showSkeletonState = isLoading || isChangingUsageRange;
+  const isBusy = snapshot !== null && snapshot.loadingState !== "idle";
 
   return (
     <main className="tray-shell">
       <PopupHeader
         isRefreshing={snapshot?.loadingState === "refreshing"}
+        refreshDisabled={isBusy}
         theme={theme}
         onRefresh={refresh}
         onToggleTheme={toggleTheme}
