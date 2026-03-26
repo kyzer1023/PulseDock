@@ -6,6 +6,7 @@ import type {
 
 interface ProviderCostLike {
   inputTokens: number;
+  cacheWriteTokens: number;
   cachedInputTokens: number;
   outputTokens: number;
   reasoningTokens: number;
@@ -88,6 +89,7 @@ export function buildProviderSnapshot({
     status,
     usageWindow,
     inputTokens: costSnapshot.inputTokens,
+    cacheWriteTokens: costSnapshot.cacheWriteTokens,
     cachedInputTokens: costSnapshot.cachedInputTokens,
     outputTokens: costSnapshot.outputTokens,
     reasoningTokens: costSnapshot.reasoningTokens,

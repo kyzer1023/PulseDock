@@ -14,6 +14,7 @@ function makeSnapshot(overrides = {}) {
       until: "2026-03-25T00:00:00.000Z",
     },
     inputTokens: 100,
+    cacheWriteTokens: 0,
     cachedInputTokens: 20,
     outputTokens: 80,
     reasoningTokens: 10,

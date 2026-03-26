@@ -20,10 +20,49 @@ function getAccent(provider: ProviderSnapshot): "codex" | "cursor" {
 }
 
 function getUsageBreakdown(provider: ProviderSnapshot) {
-  const total = Math.max(provider.totalTokens, 1);
+  if (provider.id === "cursor") {
+    const input = Math.max(provider.inputTokens, 0);
+    const cacheWrite = Math.max(provider.cacheWriteTokens, 0);
+    const cacheRead = Math.max(provider.cachedInputTokens, 0);
+    const output = Math.max(provider.outputTokens, 0);
+    const total = Math.max(input + cacheWrite + cacheRead + output, 1);
+
+    return [
+      {
+        key: "input",
+        label: "Input",
+        value: formatTokens(input),
+        sublabel: `${Math.round((input / total) * 100)}% of total tokens`,
+        percent: (input / total) * 100,
+      },
+      {
+        key: "cache-write",
+        label: "Cache write",
+        value: formatTokens(cacheWrite),
+        sublabel: `${Math.round((cacheWrite / total) * 100)}% of total tokens`,
+        percent: (cacheWrite / total) * 100,
+      },
+      {
+        key: "cache-read",
+        label: "Cache read",
+        value: formatTokens(cacheRead),
+        sublabel: `${Math.round((cacheRead / total) * 100)}% of total tokens`,
+        percent: (cacheRead / total) * 100,
+      },
+      {
+        key: "output",
+        label: "Output",
+        value: formatTokens(output),
+        sublabel: `${Math.round((output / total) * 100)}% of total tokens`,
+        percent: (output / total) * 100,
+      },
+    ];
+  }
+
   const nonCachedInput = Math.max(provider.inputTokens - provider.cachedInputTokens, 0);
   const cachedInput = Math.max(provider.cachedInputTokens, 0);
   const output = Math.max(provider.outputTokens + provider.reasoningTokens, 0);
+  const total = Math.max(nonCachedInput + cachedInput + output, 1);
 
   return [
     {
@@ -42,7 +81,7 @@ function getUsageBreakdown(provider: ProviderSnapshot) {
     },
     {
       key: "output",
-      label: provider.reasoningTokens > 0 ? "Output + reasoning" : "Output",
+      label: provider.reasoningTokens > 0 ? "Output + Reasoning" : "Output",
       value: formatTokens(output),
       sublabel: `${Math.round((output / total) * 100)}% of total tokens`,
       percent: (output / total) * 100,

@@ -25,7 +25,7 @@ function humanizeWarningCode(code: string): string {
     case "unknown-model-pricing":
       return "Pricing was missing for one or more models.";
     case "unmeasurable-session":
-      return "Some sessions were present but did not contain measurable token data.";
+      return "";
     default:
       return code;
   }
@@ -48,7 +48,8 @@ export function summarizeUnknownModels(models: string[]): string {
 }
 
 export function mapCodexWarnings(warnings: Iterable<string>): string[] {
-  return Array.from(new Set(Array.from(warnings, humanizeWarningCode))).sort((left, right) =>
-    left.localeCompare(right),
-  );
+  return Array.from(new Set(Array.from(warnings, humanizeWarningCode).filter(Boolean))).sort((
+    left,
+    right,
+  ) => left.localeCompare(right));
 }

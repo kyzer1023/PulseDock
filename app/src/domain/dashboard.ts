@@ -44,6 +44,7 @@ export interface ProviderSnapshot {
   status: ProviderStatus;
   usageWindow: UsageWindow;
   inputTokens: number;
+  cacheWriteTokens: number;
   cachedInputTokens: number;
   outputTokens: number;
   reasoningTokens: number;
