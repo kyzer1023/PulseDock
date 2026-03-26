@@ -39,6 +39,9 @@
       "icons/icon.png"
     ],
     "windows": {
+      "nsis": {
+        "template": "./windows/installer.nsi"
+      },
       "webviewInstallMode": {
         "type": "downloadBootstrapper"
       }
