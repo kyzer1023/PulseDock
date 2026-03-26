@@ -685,6 +685,18 @@ button {
   gap: 10px;
 }
 
+.cursor-legacy-quota {
+  padding: 2px 0 0;
+}
+
+.provider-detail--cursor-legacy .provider-detail__hero {
+  align-items: center;
+}
+
+.provider-detail--cursor-legacy .meter-bar__fill {
+  border-radius: 999px;
+}
+
 .meter-bar {
   display: flex;
   flex-direction: column;

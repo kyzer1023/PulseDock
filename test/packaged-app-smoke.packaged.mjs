@@ -12,6 +12,19 @@ const candidateExePaths = [
   path.join(appRoot, "src-tauri", "target", "x86_64-pc-windows-gnullvm", "release", "pulsedock.exe"),
 ];
 
+async function collectFiles(rootDir) {
+  const entries = await fs.readdir(rootDir, { withFileTypes: true });
+  const nested = await Promise.all(entries.map(async (entry) => {
+    const fullPath = path.join(rootDir, entry.name);
+    if (entry.isDirectory()) {
+      return collectFiles(fullPath);
+    }
+    return [fullPath];
+  }));
+
+  return nested.flat();
+}
+
 async function resolvePackagedExe() {
   for (const candidatePath of candidateExePaths) {
     try {
@@ -29,8 +42,12 @@ test("packaged app loads the Tauri bridge from the final artifact", {
   skip: process.platform !== "win32",
 }, async () => {
   const packagedExe = await resolvePackagedExe();
+  const packagedFiles = await collectFiles(path.dirname(packagedExe));
+  const sidecars = packagedFiles.filter((filePath) => /pulsedock-collector.*\.exe$/i.test(path.basename(filePath)));
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pulsedock-packaged-smoke-"));
   const outputPath = path.join(tempDir, "bridge-result.json");
+
+  assert.deepEqual(sidecars, []);
 
   const child = spawn(packagedExe, [], {
     cwd: appRoot,

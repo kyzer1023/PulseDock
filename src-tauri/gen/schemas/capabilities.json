@@ -1,1 +1,0 @@
-{"main-capability":{"identifier":"main-capability","description":"Default desktop capability for PulseDock","local":true,"windows":["main"],"permissions":["core:default","opener:default",{"identifier":"shell:allow-execute","allow":[{"args":true,"name":"binaries/pulsedock-collector","sidecar":true}]}]}}

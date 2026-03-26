@@ -2,6 +2,7 @@ import type { Theme } from "@renderer/hooks/use-theme";
 
 interface PopupHeaderProps {
   isRefreshing: boolean;
+  refreshDisabled?: boolean;
   theme: Theme;
   onRefresh: () => void | Promise<void>;
   onToggleTheme: () => void;
@@ -58,6 +59,7 @@ function CloseIcon() {
 
 export function PopupHeader({
   isRefreshing,
+  refreshDisabled = false,
   theme,
   onRefresh,
   onToggleTheme,
@@ -73,6 +75,7 @@ export function PopupHeader({
         <button
           aria-label="Refresh usage data"
           className={`refresh-button${isRefreshing ? " is-spinning" : ""}`}
+          disabled={refreshDisabled}
           onClick={() => void onRefresh()}
           type="button"
         >

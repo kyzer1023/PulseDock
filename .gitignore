@@ -7,4 +7,7 @@ release-smoke
 *.log
 codexbar-win-reference
 sidecar/dist
+src-tauri/target
+src-tauri/binaries
+src-tauri/gen
 tools

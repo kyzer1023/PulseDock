@@ -1,4 +1,4 @@
-import type { ProviderSnapshot } from "@domain/dashboard";
+import type { ProviderSnapshot, QuotaMeter } from "@domain/dashboard";
 import {
   formatCurrency,
   formatRelativeTime,
@@ -17,6 +17,18 @@ interface ProviderDetailPanelProps {
 
 function getAccent(provider: ProviderSnapshot): "codex" | "cursor" {
   return provider.id === "codex" ? "codex" : "cursor";
+}
+
+function isLegacyRequestMeter(meter: QuotaMeter): boolean {
+  return meter.id === "requests" || meter.unitLabel === "requests";
+}
+
+function isLegacyCursorProvider(provider: ProviderSnapshot): boolean {
+  return (
+    provider.id === "cursor" &&
+    provider.quotaMeters.length > 0 &&
+    provider.quotaMeters.every(isLegacyRequestMeter)
+  );
 }
 
 function getUsageBreakdown(provider: ProviderSnapshot) {
@@ -103,6 +115,7 @@ export function ProviderDetailPanel({
   filterSlot,
 }: ProviderDetailPanelProps) {
   const accent = getAccent(provider);
+  const isLegacyCursor = isLegacyCursorProvider(provider);
   const hasData =
     provider.status === "fresh" || provider.status === "warning" || provider.status === "stale";
   const usageBreakdown = getUsageBreakdown(provider);
@@ -113,7 +126,7 @@ export function ProviderDetailPanel({
     provider.quotaStatusMessage !== null;
 
   return (
-    <section className="provider-detail">
+    <section className={`provider-detail${isLegacyCursor ? " provider-detail--cursor-legacy" : ""}`}>
       <div className="provider-detail__hero">
         <div className="provider-detail__title-row">
           <img alt="" className="provider-detail__logo" src={icon} />
@@ -139,19 +152,35 @@ export function ProviderDetailPanel({
       {hasQuotaSection ? (
         <div className="provider-detail__section">
           <div className="provider-detail__section-label">Quota</div>
-          <div className="quota-meters">
-            {provider.quotaMeters.map((meter) => (
-              <MeterBar
-                accent={accent}
-                key={meter.id}
-                label={meter.label}
-                meta={formatQuotaMeterMeta(meter)}
-                percent={getQuotaMeterPercent(meter)}
-                value={formatQuotaMeterValue(meter)}
-                variant="quota"
-              />
-            ))}
-          </div>
+          {isLegacyCursor ? (
+            <div className="cursor-legacy-quota">
+              {provider.quotaMeters.map((meter) => (
+                <MeterBar
+                  accent={accent}
+                  key={meter.id}
+                  label={meter.label}
+                  meta={formatQuotaMeterMeta(meter)}
+                  percent={getQuotaMeterPercent(meter)}
+                  value={formatQuotaMeterValue(meter)}
+                  variant="quota"
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="quota-meters">
+              {provider.quotaMeters.map((meter) => (
+                <MeterBar
+                  accent={accent}
+                  key={meter.id}
+                  label={meter.label}
+                  meta={formatQuotaMeterMeta(meter)}
+                  percent={getQuotaMeterPercent(meter)}
+                  value={formatQuotaMeterValue(meter)}
+                  variant="quota"
+                />
+              ))}
+            </div>
+          )}
           {provider.quotaMeters.length === 0 && provider.quotaStatusMessage ? (
             <div className="provider-detail__note">{provider.quotaStatusMessage}</div>
           ) : null}
@@ -199,12 +228,12 @@ export function ProviderDetailPanel({
             </div>
           </div>
         </>
-      ) : (
+      ) : !hasData ? (
         <div className="provider-detail__empty">
           <h3>{provider.status === "error" ? "Provider refresh failed" : "No provider data yet"}</h3>
           <p>{provider.detailMessage ?? "No details available."}</p>
         </div>
-      )}
+      ) : null}
 
       {provider.warnings[0] ? (
         <div className="provider-detail__warning">{provider.warnings[0]}</div>

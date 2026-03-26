@@ -1,3 +1,3 @@
 fn main() {
-  pulsedock_lib::run();
+    pulsedock_lib::run();
 }

@@ -26,10 +26,10 @@ Updates are manual for v1. Reinstall with the latest release when a new version 
 ## Stack
 
 - Tauri
+- Rust
 - React
 - TypeScript
 - Vite
-- packaged Node sidecar
 
 ## Development
 
@@ -73,9 +73,9 @@ Artifacts are written under `src-tauri/target/<target>/release/`.
 
 PulseDock uses a small Tauri architecture:
 
-- the Tauri shell owns the tray, popup window, and external-link controls
-- a packaged Node sidecar reuses the existing Codex and Cursor collectors
-- the shell orchestrates refreshes and emits dashboard updates into the renderer bridge
+- the Tauri backend owns collection, caching, refresh orchestration, and external-link controls
+- in-process Rust collectors read local Codex and Cursor state directly
+- the backend emits dashboard updates into the renderer bridge
 - the React tray UI renders the aggregated dashboard snapshot returned by that bridge
 
-This keeps the app local-first and avoids depending on an external CLI process just to populate the tray popup.
+This keeps the app local-first and avoids shipping a second runtime just to populate the tray popup.

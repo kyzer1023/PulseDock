@@ -46,7 +46,7 @@ This repo ships PulseDock as a Windows-only GitHub Release with a Tauri-built NS
 
 - state that the build is Windows only
 - explain that updates are manual reinstall for v1
-- mention that the desktop shell now uses Tauri with a packaged collector sidecar
+- mention that the desktop shell uses Tauri with in-process Rust collectors
 - call out that the installer is unsigned and SmartScreen may warn
 - summarize what changed in the release
 - link the repository issues page for bug reports
