@@ -15,8 +15,8 @@ interface UsageRow {
   kind: string;
   model: string;
   provider: string | null;
-  inputCacheWrite: number;
-  inputNoCacheWrite: number;
+  inputWithCacheWrite: number;
+  inputWithoutCacheWrite: number;
   cacheRead: number;
   outputTokens: number;
   totalTokens: number;
@@ -31,7 +31,7 @@ interface CursorUsageCache {
 
 interface Totals {
   inputTokens: number;
-  cacheCreationTokens: number;
+  cacheWriteTokens: number;
   cachedInputTokens: number;
   outputTokens: number;
   totalTokens: number;
@@ -41,6 +41,7 @@ interface Totals {
 export interface CursorCostSnapshot {
   usageWindow: UsageWindow;
   inputTokens: number;
+  cacheWriteTokens: number;
   cachedInputTokens: number;
   outputTokens: number;
   reasoningTokens: number;
@@ -72,6 +73,7 @@ function buildEmptyCursorCostSnapshot(
   return {
     usageWindow,
     inputTokens: 0,
+    cacheWriteTokens: 0,
     cachedInputTokens: 0,
     outputTokens: 0,
     reasoningTokens: 0,
@@ -97,6 +99,7 @@ function buildStaleCursorCostSnapshot(
   return {
     usageWindow,
     inputTokens: previousSnapshot.inputTokens,
+    cacheWriteTokens: previousSnapshot.cacheWriteTokens,
     cachedInputTokens: previousSnapshot.cachedInputTokens,
     outputTokens: previousSnapshot.outputTokens,
     reasoningTokens: previousSnapshot.reasoningTokens,
@@ -249,28 +252,53 @@ function detectProvider(model: string): string | null {
 
 function hasUsage(row: UsageRow): boolean {
   return (
-    row.inputNoCacheWrite !== 0 ||
+    row.inputWithoutCacheWrite !== 0 ||
     row.outputTokens !== 0 ||
-    row.inputCacheWrite !== 0 ||
+    row.inputWithCacheWrite !== 0 ||
     row.cacheRead !== 0 ||
     row.totalTokens !== 0 ||
     row.estimatedCost !== 0
   );
 }
 
+export function getCursorRowTokenBreakdown(row: Pick<UsageRow, "inputWithCacheWrite" | "inputWithoutCacheWrite" | "cacheRead" | "outputTokens">): {
+  inputTokens: number;
+  cacheWriteTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+} {
+  const inputTokens = row.inputWithoutCacheWrite;
+  const cacheWriteTokens = Math.max(row.inputWithCacheWrite - row.inputWithoutCacheWrite, 0);
+  const cachedInputTokens = row.cacheRead;
+  const outputTokens = row.outputTokens;
+
+  return {
+    inputTokens,
+    cacheWriteTokens,
+    cachedInputTokens,
+    outputTokens,
+    totalTokens: inputTokens + cacheWriteTokens + cachedInputTokens + outputTokens,
+  };
+}
+
 function calculateTotals(rows: UsageRow[]): Totals {
   return rows.reduce<Totals>(
-    (totals, row) => ({
-      inputTokens: totals.inputTokens + row.inputNoCacheWrite,
-      cacheCreationTokens: totals.cacheCreationTokens + row.inputCacheWrite,
-      cachedInputTokens: totals.cachedInputTokens + row.cacheRead,
-      outputTokens: totals.outputTokens + row.outputTokens,
-      totalTokens: totals.totalTokens + row.totalTokens,
-      totalCost: totals.totalCost + row.estimatedCost,
-    }),
+    (totals, row) => {
+      const tokenBreakdown = getCursorRowTokenBreakdown(row);
+
+      return {
+        inputTokens: totals.inputTokens + tokenBreakdown.inputTokens,
+        cacheWriteTokens: totals.cacheWriteTokens + tokenBreakdown.cacheWriteTokens,
+        cachedInputTokens: totals.cachedInputTokens + tokenBreakdown.cachedInputTokens,
+        outputTokens: totals.outputTokens + tokenBreakdown.outputTokens,
+        totalTokens: totals.totalTokens + tokenBreakdown.totalTokens,
+        totalCost: totals.totalCost + row.estimatedCost,
+      };
+    },
     {
       inputTokens: 0,
-      cacheCreationTokens: 0,
+      cacheWriteTokens: 0,
       cachedInputTokens: 0,
       outputTokens: 0,
       totalTokens: 0,
@@ -356,8 +384,8 @@ function parseUsageCsv(csvText: string): UsageRow[] {
     const timestamp = record["Date"] ?? "";
     const date = toLocalDateString(timestamp);
     const model = (record["Model"] ?? "").trim();
-    const inputCacheWrite = parseIntValue(record["Input (w/ Cache Write)"] ?? "");
-    const inputNoCacheWrite = parseIntValue(record["Input (w/o Cache Write)"] ?? "");
+    const inputWithCacheWrite = parseIntValue(record["Input (w/ Cache Write)"] ?? "");
+    const inputWithoutCacheWrite = parseIntValue(record["Input (w/o Cache Write)"] ?? "");
     const cacheRead = parseIntValue(record["Cache Read"] ?? "");
     const outputTokens = parseIntValue(record["Output Tokens"] ?? "");
     const totalTokens = parseIntValue(record["Total Tokens"] ?? "");
@@ -368,8 +396,8 @@ function parseUsageCsv(csvText: string): UsageRow[] {
       kind: (record["Kind"] ?? "").trim(),
       model,
       provider: detectProvider(model),
-      inputCacheWrite,
-      inputNoCacheWrite,
+      inputWithCacheWrite,
+      inputWithoutCacheWrite,
       cacheRead,
       outputTokens,
       totalTokens,
@@ -518,7 +546,8 @@ export async function collectCursorCost(
 
   return {
     usageWindow,
-    inputTokens: totals.inputTokens + totals.cacheCreationTokens,
+    inputTokens: totals.inputTokens,
+    cacheWriteTokens: totals.cacheWriteTokens,
     cachedInputTokens: totals.cachedInputTokens,
     outputTokens: totals.outputTokens,
     reasoningTokens: 0,

@@ -151,6 +151,7 @@ function buildProviderErrorSnapshot(
     status: "error",
     usageWindow,
     inputTokens: 0,
+    cacheWriteTokens: 0,
     cachedInputTokens: 0,
     outputTokens: 0,
     reasoningTokens: 0,

@@ -52,6 +52,7 @@ interface CodexScanCache {
 export interface CodexLocalCostSnapshot {
   usageWindow: UsageWindow;
   inputTokens: number;
+  cacheWriteTokens: number;
   cachedInputTokens: number;
   outputTokens: number;
   reasoningTokens: number;
@@ -113,6 +114,7 @@ function buildEmptyCodexCostSnapshot(options: {
   return {
     usageWindow: options.usageWindow,
     inputTokens: 0,
+    cacheWriteTokens: 0,
     cachedInputTokens: 0,
     outputTokens: 0,
     reasoningTokens: 0,
@@ -681,6 +683,7 @@ export async function collectCodexLocalCost(
   return {
     usageWindow: window.usageWindow,
     inputTokens: totals.inputTokens,
+    cacheWriteTokens: 0,
     cachedInputTokens: totals.cachedInputTokens,
     outputTokens: totals.outputTokens,
     reasoningTokens: totals.reasoningTokens,
